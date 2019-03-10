@@ -100,7 +100,7 @@ if __name__ == '__main__':
     if not os.path.exists(feature_dir):
         os.mkdir(feature_dir)
         
-    caffe = ARGS.cafferoot + '/caffe.exe'        
+    caffe = ARGS.cafferoot + '/build/tools/Release/caffe.exe'        
     blob_prefix = '--blob_prefix=' + feature_dir
     model = ARGS.cafferoot + '/examples/o-cnn/segmentation_6_test.prototxt'
     weights = ARGS.cafferoot + '/examples/o-cnn/seg_6_cad.caffemodel'
