@@ -47,7 +47,7 @@ class DatasetGenerator:
     def generate_octree(self, depth='6', rot_num='1'):
         '''
         '''
-        octree = self.ocnn_root + '/' + 'octree.exe'
+        octree = self.ocnn_root + '/octree.exe'
         points_list = self.list_dir + 'points_list.txt'
         subprocess.check_call([octree, '--filenames', points_list, '--output_path', self.octree_dir,
                                '--depth', depth, '--rot_num', rot_num])

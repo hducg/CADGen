@@ -7,15 +7,6 @@ Created on Fri Jan 18 12:17:14 2019
 import os
 import struct
 
-from OCC.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
-from OCC.TCollection import TCollection_HAsciiString
-from OCC.STEPConstruct import stepconstruct_FindEntity
-from OCC.StepRepr import Handle_StepRepr_RepresentationItem
-from OCC.TopLoc import TopLoc_Location
-
-import occ_utils
-
-
 def point_cloud_from_file(filename, has_label=True):
     '''
     input
@@ -234,66 +225,6 @@ def label_index_from_file(filename):
             label_index.append(struct.unpack('i', file.read(4))[0])
 
     return label_index
-
-
-def shape_with_fid_to_step(filename, shape, id_map):
-    '''
-    input
-        filename
-        shape
-        id_map： {TopoDS_Face: int}
-    output
-    '''
-    print('shape_with_fid_to_step')
-#    fset = set_face(shape)
-    writer = STEPControl_Writer()
-    writer.Transfer(shape, STEPControl_AsIs)
-
-    finderp = writer.WS().GetObject().TransferWriter().GetObject().FinderProcess()
-
-    fset = occ_utils.set_face(shape)
-
-    loc = TopLoc_Location()
-    for face in fset:
-        item = stepconstruct_FindEntity(finderp, face, loc)
-        if item.IsNull():
-            print(face)
-            continue
-        item.GetObject().SetName(TCollection_HAsciiString(str(id_map[face])).GetHandle())
-
-    writer.Write(filename)
-
-
-def shape_with_fid_from_step(filename):
-    '''
-    input
-    output
-        shape:      TopoDS_Shape
-        id_map:  {TopoDS_Face: int}
-    '''
-    print('shape_with_fid_from_step')
-    reader = STEPControl_Reader()
-    reader.ReadFile(filename)
-    reader.TransferRoots()
-    shape = reader.OneShape()
-
-    treader = reader.WS().GetObject().TransferReader().GetObject()
-
-    id_map = {}
-    fset = occ_utils.set_face(shape)
-    # read the face names
-    for face in fset:
-        item = treader.EntityFromShapeResult(face, 1)
-        if item.IsNull():
-            print(face)
-            continue
-        item = Handle_StepRepr_RepresentationItem.DownCast(item).GetObject()
-        name = item.Name().GetObject().ToCString()
-        if name:
-            nameid = int(name)
-            id_map[face] = nameid
-
-    return shape, id_map
 
 
 def file_names_from_dir(where, pattern=''):

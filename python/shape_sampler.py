@@ -9,6 +9,7 @@ import os
 import argparse
 
 import file_utils
+import occ_utils
 import shape_factory
 import point_cloud
 
@@ -43,7 +44,7 @@ class ShapeSampler:
 
             step_path = self.shape_dir + shape_name + '.step'
             if not os.path.exists(step_path):
-                file_utils.shape_with_fid_to_step(step_path, shape, id_map)
+                occ_utils.shape_with_fid_to_step(step_path, shape, id_map)
 
                 face_truth_path = self.shape_dir + shape_name + '.face_truth'
                 face_truth = [label_map[face] for face, fid in
@@ -70,7 +71,7 @@ class ShapeSampler:
             if os.path.exists(file_path):
                 continue
 
-            shape, id_map = file_utils.shape_with_fid_from_step(shape_path)
+            shape, id_map = occ_utils.shape_with_fid_from_step(shape_path)
             face_truth_path = self.shape_dir + shape_name + '.face_truth'
             with open(face_truth_path, 'rb') as file:
                 face_truth = pickle.load(file)

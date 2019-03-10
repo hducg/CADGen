@@ -22,8 +22,12 @@ from OCC.TDocStd import Handle_TDocStd_Document
 from OCC.XCAFApp import XCAFApp_Application
 from OCC.TCollection import TCollection_ExtendedString
 from OCC.XCAFDoc import XCAFDoc_DocumentTool_ShapeTool, XCAFDoc_DocumentTool_ColorTool
-from OCC.GeomAbs import GeomAbs_Plane
-from OCC.BRepExtrema import BRepExtrema_DistShapeShape
+from OCC.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
+from OCC.TCollection import TCollection_HAsciiString
+from OCC.STEPConstruct import stepconstruct_FindEntity
+from OCC.StepRepr import Handle_StepRepr_RepresentationItem
+from OCC.TopLoc import TopLoc_Location
+
 
 def tool_shape_color():
     h_doc = Handle_TDocStd_Document()
@@ -134,3 +138,61 @@ def sample_point(face):
         
     return P, D
         
+def shape_with_fid_to_step(filename, shape, id_map):
+    '''
+    input
+        filename
+        shape
+        id_map： {TopoDS_Face: int}
+    output
+    '''
+    print('shape_with_fid_to_step')
+#    fset = set_face(shape)
+    writer = STEPControl_Writer()
+    writer.Transfer(shape, STEPControl_AsIs)
+
+    finderp = writer.WS().GetObject().TransferWriter().GetObject().FinderProcess()
+
+    fset = set_face(shape)
+
+    loc = TopLoc_Location()
+    for face in fset:
+        item = stepconstruct_FindEntity(finderp, face, loc)
+        if item.IsNull():
+            print(face)
+            continue
+        item.GetObject().SetName(TCollection_HAsciiString(str(id_map[face])).GetHandle())
+
+    writer.Write(filename)
+
+
+def shape_with_fid_from_step(filename):
+    '''
+    input
+    output
+        shape:      TopoDS_Shape
+        id_map:  {TopoDS_Face: int}
+    '''
+    print('shape_with_fid_from_step')
+    reader = STEPControl_Reader()
+    reader.ReadFile(filename)
+    reader.TransferRoots()
+    shape = reader.OneShape()
+
+    treader = reader.WS().GetObject().TransferReader().GetObject()
+
+    id_map = {}
+    fset = set_face(shape)
+    # read the face names
+    for face in fset:
+        item = treader.EntityFromShapeResult(face, 1)
+        if item.IsNull():
+            print(face)
+            continue
+        item = Handle_StepRepr_RepresentationItem.DownCast(item).GetObject()
+        name = item.Name().GetObject().ToCString()
+        if name:
+            nameid = int(name)
+            id_map[face] = nameid
+
+    return shape, id_map
