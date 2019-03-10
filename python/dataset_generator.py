@@ -33,10 +33,8 @@ class DatasetGenerator:
             if not os.path.exists(path):
                 os.mkdir(path)
 
-        points_list_path = root_dir + 'points_list.txt'
-        with open(points_list_path) as file:
-            points_list = file.readlines()
-            
+                
+        points_list = [path + '\n' for path in file_utils.file_paths_from_dir(self.points_dir, '.points')]    
         random.seed()
         random.shuffle(points_list)
         points_list_path = self.list_dir + 'points_list.txt'
