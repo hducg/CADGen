@@ -25,7 +25,7 @@ def generate_label_files(root_dir, batch_name):
     points_dir = root_dir + '/points/'
     shape_dir = root_dir + '/shape/'
     for i in range(len(lines)):
-        shape_name = lines[i].split('_')[0]
+        shape_name = lines[i].split('.')[0]
 
         labels_path = labels_paths[2 * i + 1]
         print(labels_path)
@@ -34,7 +34,8 @@ def generate_label_files(root_dir, batch_name):
         label_index_path = octree_dir + shape_name + '.label_index'
         print(label_index_path)
         label_index = file_utils.label_index_from_file(label_index_path)
-
+        
+        shape_name = shape_name.split('_')[0]
         points_predicted = [labels[index] for index in label_index]
         points_predicted_path = points_dir + shape_name + '.points_predicted'
         print(points_predicted_path)
