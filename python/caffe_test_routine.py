@@ -96,7 +96,7 @@ if __name__ == '__main__':
                         default=1)
     ARGS = PARSER.parse_args()
     
-    feature_dir = ARGS.rootdir + '/' + ARGS.batchname + '_feature'
+    feature_dir = ARGS.rootdir + '/' + ARGS.batchname + '_feature/'
     if not os.path.exists(feature_dir):
         os.mkdir(feature_dir)
         
