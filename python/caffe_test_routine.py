@@ -103,7 +103,7 @@ if __name__ == '__main__':
     caffe = ARGS.cafferoot + '/caffe.exe'        
     blob_prefix = '--blob_prefix=' + feature_dir
     model = ARGS.cafferoot + '/examples/o-cnn/segmentation_6_test.prototxt'
-    weights = ARGS.cafferoot + '/examples/o-cnn/seg_6.caffemodel'
+    weights = ARGS.cafferoot + '/examples/o-cnn/seg_6_cad.caffemodel'
     subprocess.check_call([caffe, 'test', '--model=' + model, '--weights=' + weights, 
                            '--gpu=0', blob_prefix, '--binary_mode=false', '--save_seperately=true', 
                            '--iterations=' + str(ARGS.num)])
