@@ -98,7 +98,7 @@ if __name__ == '__main__':
 #1. filenames, output_path --> octree.exe --> *.octree, *.label_index
     DATASET_GENERATOR.generate_octree()
 #2. rootfolder, listfile, db_name --> convert_octree_data --> lmdb, octree_list_name
-    DATASET_GENERATOR.generate_lmdb(ARGS.rootdir)
+    DATASET_GENERATOR.generate_lmdb()
 #3. prototxt, caffemodel --> caffe test --> *.label_groundtruth, *.label_predicted
 #    blob_prefix = feature_dir
 #    model_path = 'D:/Weijuan/caffe/examples/o-cnn/segmentation_6_test.prototxt'
