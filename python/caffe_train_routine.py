@@ -8,6 +8,7 @@ import os
 import subprocess
 import argparse
 import random
+import shutil
 
 import file_utils
 
@@ -36,13 +37,13 @@ def generate_lmdb(caffe_root, data_root, depth):
 
     lmdb_dir = data_root + '/' + 'test_lmdb'
     if os.path.exists(lmdb_dir):
-        os.remove(lmdb_dir)
+        shutil.rmtree(lmdb_dir)
     octree_list = data_root + '/test_octree_list.txt'
     subprocess.check_call([convert_octree_data, octree_dir, octree_list, lmdb_dir])
 
     lmdb_dir = data_root + '/' + 'train_lmdb'
     if os.path.exists(lmdb_dir):
-        os.remove(lmdb_dir)
+        shutil.rmtree(lmdb_dir)
     octree_list = data_root + '/train_octree_list.txt'
     subprocess.check_call([convert_octree_data, octree_dir, octree_list, lmdb_dir])
     
