@@ -21,13 +21,13 @@ def generate_octree_list(root_dir, depth):
     with open(octree_list_path, 'w') as file:
         for name in shape_names[:int(len(shape_names) * 0.2)]:
             for i in range(12):
-                file.writeline(name + '_' + depth + '_2_%03d.octree\n'%i)
+                file.write(name + '_' + depth + '_2_%03d.octree\n'%i)
 
     octree_list_path = root_dir + '/train_octree_list.txt'
     with open(octree_list_path, 'w') as file:
         for name in shape_names[int(len(shape_names) * 0.2):]:
             for i in range(12):
-                file.writeline(name + '_' + depth + '_2_%03d.octree\n'%i)
+                file.write(name + '_' + depth + '_2_%03d.octree\n'%i)
 
 
 def generate_lmdb(caffe_root, data_root, depth):
