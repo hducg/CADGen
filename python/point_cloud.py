@@ -25,7 +25,6 @@ Created on Fri Sep 28 15:37:43 2018
 from __future__ import print_function
 
 import numpy as np
-import math
 from multiprocessing import Pool
 
 ##########################
@@ -37,7 +36,6 @@ from OCC.BRep import BRep_Tool, BRep_Tool_Surface
 from OCC.TopLoc import TopLoc_Location
 from OCC.GeomLProp import GeomLProp_SLProps
 from OCC.TopAbs import TopAbs_REVERSED
-from OCC.GCPnts import GCPnts_AbscissaPoint
 
 #==============================================================================
 # local library
@@ -175,6 +173,7 @@ def points_sample_from_triangle(t):
     uv2 = t[1][li[2]]
     
     uvs = uvs_from_interpolation(uv0,uv1,uv2,Nv,Nh)
+
     f = t[2]
     surf = BRep_Tool_Surface(f)
     for uv in uvs:
@@ -198,7 +197,7 @@ output
 '''
 def triangles_from_shape(shape, resolution):
     tri_pts, tri_uvs, tri_facets, tri_faces = triangulation_from_shape(shape)
-    print('number of traingulation nodes:', len(tri_pts))
+#    print('number of traingulation nodes:', len(tri_pts))
     triangles = []
     for i in range(len(tri_facets)):
         t_idx = tri_facets[i]
@@ -225,7 +224,7 @@ output
     face_ids:       [int]
 '''    
 def point_cloud_from_labeled_shape(shape, label_map, id_map, resolution=0.1): 
-    print('point_cloud_from_labeled_shape')
+#    print('point_cloud_from_labeled_shape')
     cloud_pts = []
     cloud_normals = []
     cloud_feats = []
@@ -238,7 +237,7 @@ def point_cloud_from_labeled_shape(shape, label_map, id_map, resolution=0.1):
         cloud_normals += r[1]        
         cloud_segs += [label_map[r[2]]] * len(r[0])
         face_ids += [id_map[r[2]]] * len(r[0])
-    print('number of points:', len(cloud_pts))            
+#    print('number of points:', len(cloud_pts))            
     return cloud_pts, cloud_normals, cloud_feats, cloud_segs, face_ids
 
 

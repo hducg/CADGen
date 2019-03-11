@@ -15,6 +15,7 @@ from OCC.Display.SimpleGui import init_display
 
 
 import file_utils
+import occ_utils
 
 
 colors = [rgb_color(0,0,0), rgb_color(0.75,0.75,0.75), rgb_color(1,0,0), rgb_color(1,0.5,0),
@@ -39,25 +40,20 @@ class SegShapeViewer:
         self.points_category = category_name
         self.current_index = 0
 
-        list_path = root_path + '/' + category_name + '_list/points_list.txt'
+        list_path = root_path + '/' + category_name + '_list/octree_list.txt'
         with open(list_path, 'r') as file:
             lines = file.readlines()
 
         # list of points names, example: hole-1(1[triangle2])3(2[sweep]1[circle])2(2[sweep])4(1[circle]2[sweep]1[rectangle]).upgrade
-        self.shape_names = []
+        self.shape_names = [line.split('_')[0] for line in lines]
         # list of points category names, same length as shape_names, example: test
-
-
-        for line in lines:
-            # string specific to octree file names, example: _6_2_000
-            self.shape_names.append(line.split('/')[-1].split('.')[0])
 
 
     def load_shape(self):
 
         # load shape and face_index
         shape_path = self.dataset_dir + '/shape/' + self.shape_names[self.current_index] + '.step'
-        self.shape, id_map = file_utils.shape_with_fid_from_step(shape_path)
+        self.shape, id_map = occ_utils.shape_with_fid_from_step(shape_path)
         face_truth_path = self.dataset_dir + '/shape/' + self.shape_names[self.current_index] + '.face_truth'
         with open(face_truth_path, 'rb') as f:
             label_map = pickle.load(f)
@@ -199,8 +195,27 @@ def switch_truth_predicted():
         points_render.truth_predicted_mode = 'predicted'
         points_render.display()
 
-        
+
 if __name__ == '__main__':
+    '''
+    input:
+        rootdir, dir containing shape dir, points dir, and batchname_list dir, 
+        all must exist
+        
+        shape dir contains *.step file, *.face_truth file, *.face_predicted file 
+        for each shape
+        
+        points dir contains *.points file, *.face_index file, *.points_predicted 
+        file for each shape
+        
+        batchname_list dir contains octree_list.txt, from which names of shapes to 
+        be rendered are extracted. 
+        each shape has a unique name, and is associated with a step file, 
+        a face_truth file, a points file, a face_index file, a points_predicted 
+        file,all with the same name but different extensions
+
+        batchname, which test result to render, used to find batchname_list dir
+    '''
     global points_render
     PARSER = argparse.ArgumentParser()
 
@@ -217,9 +232,9 @@ if __name__ == '__main__':
                         required=False,
                         default='')
     ARGS = PARSER.parse_args()
-    
+
     points_render = SegShapeViewer(ARGS.rootdir, ARGS.batchname)
-    
+
     add_menu('Display')
     add_function_to_menu('Display', next_shape)
     add_function_to_menu('Display', switch_shape_points)

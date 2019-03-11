@@ -146,7 +146,7 @@ def shape_with_fid_to_step(filename, shape, id_map):
         id_map： {TopoDS_Face: int}
     output
     '''
-    print('shape_with_fid_to_step')
+#    print('shape_with_fid_to_step')
 #    fset = set_face(shape)
     writer = STEPControl_Writer()
     writer.Transfer(shape, STEPControl_AsIs)
@@ -173,7 +173,7 @@ def shape_with_fid_from_step(filename):
         shape:      TopoDS_Shape
         id_map:  {TopoDS_Face: int}
     '''
-    print('shape_with_fid_from_step')
+#    print('shape_with_fid_from_step')
     reader = STEPControl_Reader()
     reader.ReadFile(filename)
     reader.TransferRoots()
@@ -195,4 +195,5 @@ def shape_with_fid_from_step(filename):
             nameid = int(name)
             id_map[face] = nameid
 
-    return shape, id_map
+    return shape, id_map  
+   

@@ -97,11 +97,11 @@ def upgraded_point_cloud_from_file(filename):
         for _ in range(8):
             ptr_dis_.append(struct.unpack('i', file.read(4))[0])
 
-        print(magic_str_)
-        print(npt)
-        print(content_flags_)
-        print(channels_)
-        print(ptr_dis_)
+#        print(magic_str_)
+#        print(npt)
+#        print(content_flags_)
+#        print(channels_)
+#        print(ptr_dis_)
 
         pts = []
         for _ in range(npt):
@@ -139,7 +139,7 @@ def upgraded_point_cloud_to_file(filename, pts, normals, features, labels):
     '''
     write upgraded point cloud to file
     '''
-    print('upgraded_point_cloud_to_file')
+#    print('upgraded_point_cloud_to_file')
     npt = len(pts)
     if len(normals) != npt and len(features) != npt:
         print('either normal or feature info is not correct')
@@ -220,7 +220,7 @@ def label_index_from_file(filename):
     label_index = []
     with open(filename, 'rb') as file:
         npt = struct.unpack('i', file.read(4))[0]
-        print('npt', npt)
+#        print('npt', npt)
         for _ in range(npt):
             label_index.append(struct.unpack('i', file.read(4))[0])
 
