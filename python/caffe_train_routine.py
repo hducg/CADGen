@@ -32,7 +32,7 @@ def generate_octree_list(root_dir, depth):
 
 def generate_lmdb(caffe_root, data_root, depth):
     convert_octree_data = caffe_root + '/build/tools/Release/convert_octree_data.exe'
-    octree_dir = data_root + '/octree_' + depth + '_12'
+    octree_dir = data_root + '/octree_' + depth + '_12/'
 
     lmdb_dir = data_root + '/' + 'test_lmdb'
     if os.path.exists(lmdb_dir):
