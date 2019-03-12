@@ -140,6 +140,10 @@ def upgraded_point_cloud_to_file(filename, pts, normals, features, labels):
     write upgraded point cloud to file
     '''
 #    print('upgraded_point_cloud_to_file')
+    if not os.path.exists(filename):
+        print(filename, ' not exists')
+        return
+        
     npt = len(pts)
     if len(normals) != npt and len(features) != npt:
         print('either normal or feature info is not correct')

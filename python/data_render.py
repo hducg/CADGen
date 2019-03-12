@@ -38,7 +38,7 @@ class SegShapeViewer:
         self.truth_predicted_mode = 'truth'
         self.dataset_dir = root_path
         self.points_category = category_name
-        self.current_index = 0
+        self.current_index = -1
 
         list_path = root_path + '/' + category_name + '_list/octree_list.txt'
         with open(list_path, 'r') as file:
@@ -89,17 +89,17 @@ class SegShapeViewer:
         if self.shape_points_mode is 'shape':
             if self.truth_predicted_mode is 'truth':
                 display_shape(self.shape, self.face_truth)
-                self.label_suffix = 'shape_groundtruth'
+                self.label_suffix = '_shape_groundtruth'
             else:
                 display_shape(self.shape, self.face_predicted)
-                self.label_suffix = 'shape_predicted'
+                self.label_suffix = '_shape_predicted'
         else:
             if self.truth_predicted_mode is 'truth':
                 display_points(self.points, self.points_truth)
-                self.label_suffix = 'points_groundtruth'
+                self.label_suffix = '_points_groundtruth'
             else:
                 display_points(self.points, self.points_predicted)
-                self.label_suffix = 'points_predicted'
+                self.label_suffix = '_points_predicted'
 
 
     def save_image(self):
@@ -114,7 +114,7 @@ def display_shape(shape, fmap):
         ais.SetCustomColor(f, colors[fmap[f]])
 
     occ_display.Context.Display(ais.GetHandle())
-    occ_display.View_Iso()
+#    occ_display.View_Iso()
     occ_display.FitAll()
 
 
@@ -149,7 +149,7 @@ def display_points(pts, labels):
         point_cloud.SetColor(colors[i])
 
         ais_context.Display(point_cloud.GetHandle())
-    occ_display.View_Iso()
+#    occ_display.View_Iso()
     occ_display.FitAll()
 
 

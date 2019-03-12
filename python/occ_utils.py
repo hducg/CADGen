@@ -5,6 +5,7 @@ Created on Thu Oct 25 11:43:39 2018
 @author: 2624224
 """
 import random
+import os
 
 from OCC.TopExp import TopExp_Explorer
 from OCC.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE
@@ -174,6 +175,10 @@ def shape_with_fid_from_step(filename):
         id_map:  {TopoDS_Face: int}
     '''
 #    print('shape_with_fid_from_step')
+    if not os.path.exists(filename):
+        print(filename, ' not exists')
+        return
+        
     reader = STEPControl_Reader()
     reader.ReadFile(filename)
     reader.TransferRoots()
