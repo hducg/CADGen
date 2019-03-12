@@ -17,7 +17,7 @@ import file_utils
 def generate_octree_list(root_dir, octree_dir, batch_name, num):
     test_octree_list_path = root_dir + '/test_octree_list.txt'
     with open(test_octree_list_path) as file:
-        lines = [line.split('_')[0] + '_6_2_000.octree' for line in file.readlines()]
+        lines = [line.split('_')[0] + '_6_2_000.octree\n' for line in file.readlines()]
     octree_list = list(set(lines))
     
     random.seed()
