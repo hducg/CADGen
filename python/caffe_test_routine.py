@@ -10,11 +10,16 @@ import pickle
 import operator
 import argparse
 import random
+import shutil
 
 import file_utils
 
 def generate_octree_list(root_dir, octree_dir, batch_name, num):
-    octree_list = [name + '\n' for name in file_utils.file_names_from_dir(octree_dir, '.octree')]
+    test_octree_list_path = root_dir + '/test_octree_list.txt'
+    with open(test_octree_list_path) as file:
+        lines = [line.split('_')[0] + '_6_2_000.octree' for line in file.readlines()]
+    octree_list = list(set(lines))
+    
     random.seed()
     random.shuffle(octree_list)
 
@@ -25,7 +30,7 @@ def generate_octree_list(root_dir, octree_dir, batch_name, num):
 def generate_lmdb(caffe_root, data_root, octree_dir, batch_name):
     lmdb_dir = data_root + '/' + batch_name + '_lmdb'
     if os.path.exists(lmdb_dir):
-        os.remove(lmdb_dir)
+        shutil.rmtree(lmdb_dir)
 
     octree_list = data_root + '/' + batch_name + '_list/octree_list.txt'
     convert_octree_data = caffe_root + '/build/tools/Release/convert_octree_data.exe'
@@ -144,7 +149,7 @@ if __name__ == '__main__':
                         default=1)
     ARGS = PARSER.parse_args()
 
-    octree_dir = ARGS.rootdir + '/octree_6_1'
+    octree_dir = ARGS.rootdir + '/octree_6_1/'
     
     list_dir = ARGS.rootdir + '/' + ARGS.batchname + '_list/'
     if not os.path.exists(list_dir):
