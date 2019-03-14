@@ -80,6 +80,10 @@ def upgraded_point_cloud_from_file(filename):
         features:   [[float] * number of channels] * number of point
         labels:     [int] * number of point
     '''
+    if not os.path.exists(filename):
+        print(filename, ' not exists')
+        return
+        
     with open(filename, 'rb') as file:
         magic_str_ = []
         for _ in range(16):
@@ -140,9 +144,6 @@ def upgraded_point_cloud_to_file(filename, pts, normals, features, labels):
     write upgraded point cloud to file
     '''
 #    print('upgraded_point_cloud_to_file')
-    if not os.path.exists(filename):
-        print(filename, ' not exists')
-        return
         
     npt = len(pts)
     if len(normals) != npt and len(features) != npt:
