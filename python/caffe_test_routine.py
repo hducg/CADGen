@@ -44,14 +44,14 @@ def generate_label_files(root_dir, octree_dir, batch_name):
         lines = file.readlines()
 
     feature_dir = root_dir + '/' + batch_name + '_feature/'
-    labels_paths = file_utils.file_paths_from_dir(feature_dir)
+    labels_paths = file_utils.file_paths_from_dir(feature_dir, 'predicted')
 
     points_dir = root_dir + '/points/'
     shape_dir = root_dir + '/shape/'
     for i in range(len(lines)):
         shape_name = lines[i].split('_')[0]
 
-        labels_path = labels_paths[2 * i + 1]
+        labels_path = labels_paths[i]
         print(labels_path)
         labels = file_utils.labels_from_file(labels_path)
 
@@ -66,17 +66,26 @@ def generate_label_files(root_dir, octree_dir, batch_name):
             pickle.dump(points_predicted, f)
 
     # to be debugged
+        
         face_index_path = points_dir + shape_name + '.face_index'
         with open(face_index_path, 'rb') as f:
             face_index = pickle.load(f)
 
-        face_label_map = {}
-        for i in range(len(points_predicted)):
-            fid = face_index[i]
-            label = points_predicted[i]
-            if fid not in face_label_map:
-                face_label_map[fid] = {label:1}
+        face_octant_map = {}
+        for i in range(len(label_index)):
+            fid = face_index[i] 
+            oid = label_index[i]           
+            if fid not in face_octant_map:
+                face_octant_map[fid] = [oid]
             else:
+                face_octant_map[fid].append(oid)
+                
+        face_label_map = {}
+        for fid, oids in face_octant_map:
+            if fid not in face_label_map:
+                face_label_map[fid] = {}
+            for oid in oids: 
+                label = labels[oid]
                 if label in face_label_map[fid]:
                     face_label_map[fid][label] += 1
                 else:
