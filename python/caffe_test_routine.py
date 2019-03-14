@@ -81,7 +81,7 @@ def generate_label_files(root_dir, octree_dir, batch_name):
                 face_octant_map[fid].append(oid)
                 
         face_label_map = {}
-        for fid, oids in face_octant_map:
+        for fid, oids in face_octant_map.items():
             if fid not in face_label_map:
                 face_label_map[fid] = {}
             for oid in oids: 
