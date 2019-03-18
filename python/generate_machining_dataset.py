@@ -142,7 +142,7 @@ if __name__ is '__main__':
                         octree dir, lmdb dir',
                         required=True)
     ARGS = PARSER.parse_args()
-
+    print(ARGS.rootdir)
     if not os.path.exists(ARGS.rootdir + '/points'):
         os.mkdir(ARGS.rootdir + '/points')
 
