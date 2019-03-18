@@ -139,7 +139,7 @@ def upgraded_point_cloud_from_file(filename):
     return pts, normals, features, labels
 
 
-def upgraded_point_cloud_to_file(filename, pts, normals, features, labels):
+def upgraded_point_cloud_to_file(filename, pts, normals, features=[], labels=[]):
     '''
     write upgraded point cloud to file
     '''

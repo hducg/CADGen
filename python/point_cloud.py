@@ -25,7 +25,6 @@ Created on Fri Sep 28 15:37:43 2018
 from __future__ import print_function
 
 import numpy as np
-from multiprocessing import Pool
 
 ##########################
 # OCC library
@@ -40,7 +39,7 @@ from OCC.TopAbs import TopAbs_REVERSED
 #==============================================================================
 # local library
 #==============================================================================
-from occ_utils import set_face, get_boundingbox
+import occ_utils
 
 #logging.basicConfig(level=logging.INFO)
 #
@@ -75,7 +74,7 @@ def triangulation_from_shape(shape):
     uvs = []
     triangles = []
     triangle_faces = []
-    faces = set_face(shape)
+    faces = occ_utils.set_face(shape)
     offset = 0
     for f in faces:
         aLoc = TopLoc_Location()
@@ -248,7 +247,7 @@ output
     resolution:     float
 '''    
 def resolution_from_shape(shape):
-    xmin, ymin, zmin, xmax, ymax, zmax, xlen, ylen, zlen = get_boundingbox(shape, use_mesh = False)
+    xmin, ymin, zmin, xmax, ymax, zmax, xlen, ylen, zlen = occ_utils.get_boundingbox(shape, use_mesh = False)
     resolution = max(xlen, ylen, zlen) / 256
     
     return resolution        

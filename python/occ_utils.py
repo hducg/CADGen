@@ -9,7 +9,7 @@ import os
 
 from OCC.TopExp import TopExp_Explorer
 from OCC.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE
-from OCC.TopoDS import topods
+from OCC.TopoDS import topods, TopoDS_Shape
 from OCC.Bnd import Bnd_Box
 from OCC.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.BRepBndLib import brepbndlib_Add
@@ -28,6 +28,7 @@ from OCC.TCollection import TCollection_HAsciiString
 from OCC.STEPConstruct import stepconstruct_FindEntity
 from OCC.StepRepr import Handle_StepRepr_RepresentationItem
 from OCC.TopLoc import TopLoc_Location
+from OCC.StlAPI import StlAPI_Reader
 
 
 def tool_shape_color():
@@ -42,9 +43,9 @@ def tool_shape_color():
     l_Colors = XCAFDoc_DocumentTool_ColorTool(doc.Main())
     shape_tool = h_shape_tool.GetObject()
     color_tool = l_Colors.GetObject()
-    
+
     return shape_tool, color_tool
-    
+
 '''
 input
     shape: TopoDS_Shape
@@ -55,11 +56,11 @@ def set_face(shape):
     fset = set()
     exp = TopExp_Explorer(shape,TopAbs_FACE)
     while exp.More():
-        s = exp.Current()       
+        s = exp.Current()
         exp.Next()
-        face = topods.Face(s) 
+        face = topods.Face(s)
         fset.add(face)
-    
+
     return fset
 
 
@@ -73,12 +74,12 @@ def set_edge(shape):
     eset = set()
     exp = TopExp_Explorer(shape,TopAbs_EDGE)
     while exp.More():
-        s = exp.Current()       
+        s = exp.Current()
         exp.Next()
-        e = topods.Edge(s) 
+        e = topods.Edge(s)
         eset.add(e)
 #        print(face)
-    
+
     return eset
 
 
@@ -119,26 +120,26 @@ output
 '''
 def sample_point(face):
     #    randomly choose a point from F
-    u_min, u_max, v_min, v_max = breptools_UVBounds(face)    
+    u_min, u_max, v_min, v_max = breptools_UVBounds(face)
     u = random.uniform(u_min, u_max)
     v = random.uniform(v_min, v_max)
-    
+
     itool = IntTools_FClass2d(face, 1e-6)
     while itool.Perform(gp_Pnt2d(u,v)) != 0:
         print('outside')
         u = random.uniform(u_min, u_max)
-        v = random.uniform(v_min, v_max)     
-        
+        v = random.uniform(v_min, v_max)
+
     P = BRepAdaptor_Surface(face).Value(u, v)
 
 #   the normal
-    surf = BRep_Tool_Surface(face)    
-    D = GeomLProp_SLProps(surf,u,v,1,0.01).Normal()  
+    surf = BRep_Tool_Surface(face)
+    D = GeomLProp_SLProps(surf,u,v,1,0.01).Normal()
     if face.Orientation() == TopAbs_REVERSED:
         D.Reverse()
-        
+
     return P, D
-        
+
 def shape_with_fid_to_step(filename, shape, id_map):
     '''
     input
@@ -178,7 +179,7 @@ def shape_with_fid_from_step(filename):
     if not os.path.exists(filename):
         print(filename, ' not exists')
         return
-        
+
     reader = STEPControl_Reader()
     reader.ReadFile(filename)
     reader.TransferRoots()
@@ -200,5 +201,18 @@ def shape_with_fid_from_step(filename):
             nameid = int(name)
             id_map[face] = nameid
 
-    return shape, id_map  
-   
+    return shape, id_map
+
+
+def shape_from_stl(filename):
+    if not os.path.isfile(filename):
+        raise FileNotFoundError("%s not found." % filename)
+
+    stl_reader = StlAPI_Reader()
+    the_shape = TopoDS_Shape()
+    stl_reader.Read(the_shape, filename)
+
+    if the_shape.IsNull():
+        raise AssertionError("Shape is null.")
+
+    return the_shape

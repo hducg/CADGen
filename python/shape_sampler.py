@@ -14,14 +14,15 @@ import occ_utils
 import shape_factory
 import point_cloud
 
-        
+
 def generate_shape(root_dir):
     '''
     generate num_shapes random shapes in shape_dir
     '''
     shape_dir = root_dir + 'shape/'
-    
+
     shape, label_map, id_map, shape_name = shape_factory.shape_drain()
+    print(shape_name)
     step_path = shape_dir + shape_name + '.step'
 #    print(step_path)
     if not os.path.exists(step_path):
@@ -39,8 +40,8 @@ def generate_points(shape_path):
     generate points for shapes listed in CATEGORY_NAME_step.txt
     '''
     shape_dir = shape_path.partition('shape')[0] + 'shape/'
-    points_dir = shape_path.partition('shape')[0] + 'points/'    
-    
+    points_dir = shape_path.partition('shape')[0] + 'points/'
+
     shape_name = shape_path.split('/')[-1].split('.')[0]
     file_path = points_dir + shape_name + '.points'
     if os.path.exists(file_path):
@@ -65,28 +66,28 @@ def generate_points(shape_path):
 if __name__ == '__main__':
     '''
     input:
-        rootdir, dir where to put generated shapes, points, octrees, lmdb, and 
+        rootdir, dir where to put generated shapes, points, octrees, lmdb, and
         features, must exist
-        
+
         num, number of shapes to generate
-        
+
     output:
         shape and points dir under rootdir
-        
-        num *.step files and num *.face_truth files in shape dir. 
-        In the step files, each face has a unique id, in a range of [0, number 
+
+        num *.step files and num *.face_truth files in shape dir.
+        In the step files, each face has a unique id, in a range of [0, number
         of faces)
-        the face_truth file contains face labels ordered by face id. 
-        
+        the face_truth file contains face labels ordered by face id.
+
         num *.points files and num *.face_index files in points dir
-        points file contains a list of points coordinates, normals, labels and 
+        points file contains a list of points coordinates, normals, labels and
         features
-        face_index contains face id for each point, in the same order as in points 
-        file 
-        
-        each shape has a unique name, and is associated with a step file, 
-        a face_truth file, a points file, a face_index file, all with the same 
-        prefix but different extensions  
+        face_index contains face id for each point, in the same order as in points
+        file
+
+        each shape has a unique name, and is associated with a step file,
+        a face_truth file, a points file, a face_index file, all with the same
+        prefix but different extensions
     '''
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument('--rootdir',
@@ -101,20 +102,20 @@ if __name__ == '__main__':
                         help='number of shapes to generate',
                         required=False,
                         default=1)
-    ARGS = PARSER.parse_args()    
+    ARGS = PARSER.parse_args()
 
-    root_dir = ARGS.rootdir + '/'   
+    root_dir = ARGS.rootdir + '/'
     shape_dir = root_dir + 'shape/'
     points_dir = root_dir + 'points/'
-    
+
     dir_list = [shape_dir, points_dir]
     for path in dir_list:
         if not os.path.exists(path):
             os.mkdir(path)
- 
+
 #1. shape_drain --> shape, label_map, id_map, shape_name
     Pool().map(generate_shape, [root_dir]*ARGS.num)
-    
+
 #2. shape, label_map, id_map --> point_cloud.py --> *.points, *.face_index, *.points_truth
     shape_paths = file_utils.file_paths_from_dir(shape_dir, '.step')
     Pool().map(generate_points, shape_paths)
