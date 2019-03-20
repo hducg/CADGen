@@ -17,7 +17,7 @@ from OCC.BRepTools import breptools_UVBounds
 from OCC.IntTools import IntTools_FClass2d
 from OCC.gp import gp_Pnt2d
 from OCC.BRepAdaptor import BRepAdaptor_Surface
-from OCC.BRep import BRep_Tool_Surface
+from OCC.BRep import BRep_Tool_Surface, BRep_Tool
 from OCC.GeomLProp import GeomLProp_SLProps
 from OCC.TDocStd import Handle_TDocStd_Document
 from OCC.XCAFApp import XCAFApp_Application
@@ -29,7 +29,6 @@ from OCC.STEPConstruct import stepconstruct_FindEntity
 from OCC.StepRepr import Handle_StepRepr_RepresentationItem
 from OCC.TopLoc import TopLoc_Location
 from OCC.StlAPI import StlAPI_Reader
-
 
 def tool_shape_color():
     h_doc = Handle_TDocStd_Document()
@@ -216,3 +215,19 @@ def shape_from_stl(filename):
         raise AssertionError("Shape is null.")
 
     return the_shape
+
+def normal_to_face_center(face):
+    u_min, u_max, v_min, v_max = breptools_UVBounds(face)
+    u_mid = (u_min + u_max) / 2.
+    v_mid = (v_min + v_max) / 2.
+
+    surf = BRep_Tool_Surface(face)
+    normal = GeomLProp_SLProps(surf,u_mid, v_mid,1,0.01).Normal()  
+    if face.Orientation() == TopAbs_REVERSED:
+        normal.Reverse()
+    
+    return normal
+    
+def coord_list_from_vertex(aVertex):
+    pnt = BRep_Tool.Pnt(aVertex)
+    return [pnt.X(), pnt.Y(), pnt.Z()]

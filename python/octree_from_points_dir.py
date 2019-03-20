@@ -33,8 +33,7 @@ if __name__ == '__main__':
     input:
         ocnnroot, dir where octree.exe resides
         
-        rootdir, dir containing shape dir and points dir, the 3 dirs and files 
-        therein must exist
+        rootdir, dir containing points dir where *.points files reside
         
         depth, at what depth octrees should be generated
         
@@ -56,8 +55,7 @@ if __name__ == '__main__':
     PARSER.add_argument('--rootdir',
                         '-r',
                         type=str,
-                        help='root dir containning the shape dir, points dir, \
-                        octree dir, lmdb dir, feature dir, and list dir',
+                        help='root dir containning points dir',
                         required=True)
     PARSER.add_argument('--depth',
                         '-d',

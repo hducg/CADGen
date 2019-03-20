@@ -310,24 +310,6 @@ def list_wire_random():
     return wires, wire_name
 
 
-
-def normal_face(in_face):
-    '''
-    input
-        face: TopoDS_Face
-    output
-        gp_Dir
-    '''
-    u_param, unused_u_max, v_param, unused_v_max = breptools_UVBounds(in_face)
-    surf = BRep_Tool_Surface(in_face)
-    normal = GeomLProp_SLProps(surf, u_param, v_param, 1, 0.01).Normal()
-    if in_face.Orientation() == TopAbs_REVERSED:
-        normal.Reverse()
-
-    return normal
-
-
-
 def face_bottom(shape):
     '''
     input
@@ -338,7 +320,7 @@ def face_bottom(shape):
     f_list = occ_utils.set_face(shape)
     face = None
     for face in f_list:
-        normal = normal_face(face)
+        normal = occ_utils.normal_to_face_center(face)
         if normal.IsEqual(DRAIN_RCS.Direction(), 0.01):
             break
 

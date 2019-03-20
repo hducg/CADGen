@@ -11,6 +11,7 @@ import glob
 import os
 import struct
 import time
+import random
 
 import numpy as np
 
@@ -22,7 +23,7 @@ def upgraded_point_cloud_to_file(filename, pts, normals, features=[], labels=[])
     write upgraded point cloud to file
     '''
 #    print('upgraded_point_cloud_to_file')
-        
+
     npt = len(pts)
     if len(normals) != npt and len(features) != npt:
         print('either normal or feature info is not correct')
@@ -78,7 +79,7 @@ def upgraded_point_cloud_to_file(filename, pts, normals, features=[], labels=[])
             file.write(struct.pack('f', label))
 
     return npt
-    
+
 def points_from_triangle(tri):
     pts = np.array([np.array(tri[0:3]), np.array(tri[3:6]), np.array(tri[6:9])])
     lens = np.array([np.sum(np.square(pts[1] - pts[2])), np.sum(np.square(pts[0] - pts[2])), np.sum(np.square(pts[0] - pts[1]))])
@@ -126,34 +127,80 @@ def points_from_stl_mesh(the_mesh):
 
 def points_file_from_stl_path(stl_path):
     points_path = stl_path.split('.')[0].replace('stl', 'points') + '.points'
-   
+
     if not os.path.exists(points_path):
         the_mesh = stl.mesh.Mesh.from_file(stl_path)
-        pts, normals = points_from_stl_mesh(the_mesh)    
+        pts, normals = points_from_stl_mesh(the_mesh)
         upgraded_point_cloud_to_file(points_path, pts, normals)
 
 
-if __name__ is '__main__':
+if __name__ == '__main__':
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument('--rootdir',
                         '-r',
                         type=str,
-                        help='root dir containning the stl dir, points dir, \
-                        octree dir, lmdb dir',
+                        help='root dir containning the stl dir',
                         required=True)
-    ARGS = PARSER.parse_args()
-    print(ARGS.rootdir)
-    if not os.path.exists(ARGS.rootdir + '/points'):
-        os.mkdir(ARGS.rootdir + '/points')
+    PARSER.add_argument('--step',
+                        '-s',
+                        type=int,
+                        help='which step to perform',
+                        required=False,
+                        default=0)
 
-        sub_dirs = [item.replace('stl', 'points') for item in glob.glob(ARGS.rootdir + '/stl/*')]
+    ARGS = PARSER.parse_args()
+
+    random.seed()
+
+    points_dir = os.path.join(ARGS.rootdir + '/points')
+    stl_dir = os.path.join(ARGS.rootdir + '/stl')
+
+    # generate points file
+    if ARGS.step == 0:
+        if not os.path.exists(points_dir):
+            os.mkdir(points_dir)
+
+        sub_dirs = [item.replace('stl', 'points') for item in glob.glob(stl_dir + '/*')]
         for sub_dir in sub_dirs:
             if not os.path.exists(sub_dir):
                 os.mkdir(sub_dir)
 
-    stl_list = glob.glob(ARGS.rootdir + '/stl/*/*')
-    start = time.time()
-    Pool().map(points_file_from_stl_path, stl_list)
-    end = time.time()
-    print(end - start, 'seconds')   
+        stl_list = glob.glob(stl_dir + '/*/*')
+        start = time.time()
+        Pool().map(points_file_from_stl_path, stl_list)
+        end = time.time()
+        print(end - start, 'seconds')
+
+        # generate points list file
+        points_file = os.path.join(ARGS.rootdir, '/points_list.txt')
+        if not os.path.exists(points_file):
+            points_paths = [item + '\n' for item in glob.glob(points_dir + '/*/*')]
+            with open(points_file, 'w') as file:
+                file.writelines(points_paths)
+
+    # generate test and train octree list file
+    if ARGS.step == 1:
+        train_list = []
+        test_list = []
+        sub_dirs = glob.glob(stl_dir + '/*')
+        for sub_dir in sub_dirs:
+            stl_list = [item.split('.')[0] for item in os.listdir(sub_dir)]
+            print(stl_list[:3])
+            random.shuffle(stl_list)
+            print(stl_list[:3])
+            test_list += stl_list[:200]
+            train_list += stl_list[200:]
     
+        train_octree_list = os.path.join(ARGS.rootdir + '\\train_octree_list.txt')
+        with open(train_octree_list, 'w') as file:
+            for name in train_list:
+                for i in range(12):
+                    label = int(name.split('_')[0])
+                    file.write(name + '_6_2_%03d.octree %d\n'%(i, label))
+    
+        test_octree_list = os.path.join(ARGS.rootdir + '\\test_octree_list.txt')
+        with open(test_octree_list, 'w') as file:
+            for name in test_list:
+                for i in range(12):
+                    label = int(name.split('_')[0])
+                    file.write(name + '_6_2_%03d.octree %d\n'%(i, label))
