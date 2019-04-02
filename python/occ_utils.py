@@ -6,18 +6,20 @@ Created on Thu Oct 25 11:43:39 2018
 """
 import random
 import os
+import sys
+import math
 
 from OCC.TopExp import TopExp_Explorer
-from OCC.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE
-from OCC.TopoDS import topods, TopoDS_Shape
+from OCC.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE, TopAbs_VERTEX
+from OCC.TopoDS import topods, TopoDS_Shape, TopoDS_Vertex, TopoDS_Edge, TopoDS_Face
 from OCC.Bnd import Bnd_Box
 from OCC.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.BRepBndLib import brepbndlib_Add
 from OCC.BRepTools import breptools_UVBounds
 from OCC.IntTools import IntTools_FClass2d
-from OCC.gp import gp_Pnt2d
-from OCC.BRepAdaptor import BRepAdaptor_Surface
-from OCC.BRep import BRep_Tool_Surface, BRep_Tool
+from OCC.gp import gp_Pnt2d, gp_Pnt, gp_Dir, gp_Vec
+from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
+from OCC.BRep import BRep_Tool_Surface, BRep_Tool, BRep_Tool_Curve
 from OCC.GeomLProp import GeomLProp_SLProps
 from OCC.TDocStd import Handle_TDocStd_Document
 from OCC.XCAFApp import XCAFApp_Application
@@ -29,29 +31,26 @@ from OCC.STEPConstruct import stepconstruct_FindEntity
 from OCC.StepRepr import Handle_StepRepr_RepresentationItem
 from OCC.TopLoc import TopLoc_Location
 from OCC.StlAPI import StlAPI_Reader
+from OCC.GeomLib import GeomLib_IsPlanarSurface
+from OCC.BRepExtrema import BRepExtrema_ExtPC, BRepExtrema_DistShapeShape
+from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeVertex
 
-def tool_shape_color():
-    h_doc = Handle_TDocStd_Document()
-    assert(h_doc.IsNull())
-    # Create the application
-    app = XCAFApp_Application.GetApplication().GetObject()
-    app.NewDocument(TCollection_ExtendedString("MDTV-CAF"), h_doc)
-    # Get root assembly
-    doc = h_doc.GetObject()
-    h_shape_tool = XCAFDoc_DocumentTool_ShapeTool(doc.Main())
-    l_Colors = XCAFDoc_DocumentTool_ColorTool(doc.Main())
-    shape_tool = h_shape_tool.GetObject()
-    color_tool = l_Colors.GetObject()
 
-    return shape_tool, color_tool
+SURFACE_TYPE = ['plane', 'cylinder', 'cone', 'sphere', 'torus', 'bezier', 'bspline', 'revolution', 'extrusion', 'offset', 'other']
+CURVE_TYPE = ['line', 'circle', 'ellipse', 'hyperbola', 'parabola', 'bezier', 'bspline', 'offset', 'other']
 
-'''
-input
-    shape: TopoDS_Shape
-output
-    fset: {TopoDS_Face}
-'''
-def set_face(shape):
+import OCCUtils.edge
+import OCCUtils.face
+import OCCUtils.Topology
+
+
+def list_face(shape):
+    '''
+    input
+        shape: TopoDS_Shape
+    output
+        fset: {TopoDS_Face}
+    '''
     fset = set()
     exp = TopExp_Explorer(shape,TopAbs_FACE)
     while exp.More():
@@ -60,16 +59,16 @@ def set_face(shape):
         face = topods.Face(s)
         fset.add(face)
 
-    return fset
+    return list(fset)
 
 
-'''
-input
-    shape: TopoDS_Shape
-output
-    eset: {TopoDS_Edge}
-'''
-def set_edge(shape):
+def list_edge(shape):
+    '''
+    input
+        shape: TopoDS_Shape
+    output
+        eset: {TopoDS_Edge}
+    '''
     eset = set()
     exp = TopExp_Explorer(shape,TopAbs_EDGE)
     while exp.More():
@@ -79,11 +78,58 @@ def set_edge(shape):
         eset.add(e)
 #        print(face)
 
-    return eset
+    return list(eset)
 
 
-'''
-'''
+def edges_at_vertex(vert, face):
+    f_topo = OCCUtils.Topology.Topo(face)
+    v_edges = [edge for edge in f_topo.edges_from_vertex(vert)]
+    return v_edges
+     
+def list_verts_ordered(face):
+    f_util = OCCUtils.face.Face(face)
+    w_util = OCCUtils.Topology.WireExplorer(next(f_util.topo.wires()))
+    verts = [vert for vert in w_util.ordered_vertices()]
+    return verts
+    
+
+def as_list(occ_obj):
+    if type(occ_obj) not in [TopoDS_Vertex, gp_Pnt, gp_Dir, gp_Vec]:
+        return None
+        
+    if type(occ_obj) is TopoDS_Vertex:
+        occ_obj = BRep_Tool.Pnt(occ_obj)
+    
+    return list(occ_obj.Coord())
+    
+    
+def as_occ(pnt, occ_type):
+    if occ_type not in [TopoDS_Vertex, gp_Pnt, gp_Dir, gp_Vec]:
+        return None
+     
+    if occ_type is TopoDS_Vertex:
+        return BRepBuilderAPI_MakeVertex(gp_Pnt(pnt[0], pnt[1], pnt[2])).Vertex()
+    else:
+        return occ_type(pnt[0], pnt[1], pnt[2])
+    
+    
+def type_face(face):
+    if type(face) is not TopoDS_Face:
+        print(face, 'not face')
+        return None
+        
+    surf_adaptor = BRepAdaptor_Surface(face)        
+    return SURFACE_TYPE[surf_adaptor.GetType()]
+
+    
+def type_edge(the_edge):
+    if type(the_edge) is not TopoDS_Edge:
+        return None
+        
+    curve_adaptor = BRepAdaptor_Curve(the_edge)    
+    return CURVE_TYPE[curve_adaptor.GetType()]
+
+    
 def get_boundingbox(shape, tol=1e-6, use_mesh=True):
     """ return the bounding box of the TopoDS_Shape `shape`
     Parameters
@@ -154,7 +200,7 @@ def shape_with_fid_to_step(filename, shape, id_map):
 
     finderp = writer.WS().GetObject().TransferWriter().GetObject().FinderProcess()
 
-    fset = set_face(shape)
+    fset = list_face(shape)
 
     loc = TopLoc_Location()
     for face in fset:
@@ -187,7 +233,7 @@ def shape_with_fid_from_step(filename):
     treader = reader.WS().GetObject().TransferReader().GetObject()
 
     id_map = {}
-    fset = set_face(shape)
+    fset = list_face(shape)
     # read the face names
     for face in fset:
         item = treader.EntityFromShapeResult(face, 1)
@@ -227,7 +273,104 @@ def normal_to_face_center(face):
         normal.Reverse()
     
     return normal
+
+
+       
+def points_from_edge(edge):
+    vset = []
+    exp = TopExp_Explorer(edge, TopAbs_VERTEX)
+    while exp.More():
+        s = exp.Current()
+        exp.Next()
+        vert = topods.Vertex(s)
+        vset.append(as_list(vert))
+
+    return list(vset)
+        
+def dist_point_to_edge(pnt, edge):    
+    assert pnt is not None
     
-def coord_list_from_vertex(aVertex):
-    pnt = BRep_Tool.Pnt(aVertex)
-    return [pnt.X(), pnt.Y(), pnt.Z()]
+    vert_maker = BRepBuilderAPI_MakeVertex(gp_Pnt(pnt[0], pnt[1], pnt[2]))
+    dss = BRepExtrema_DistShapeShape(vert_maker.Vertex(), edge)
+    if not dss.IsDone():
+        print('BRepExtrema_ExtPC not done')
+        return None, None
+
+    if dss.NbSolution() < 1:
+        print('no nearest points found')
+        return None, None
+    return dss.Value(), as_list(dss.PointOnShape2(1))
+
+    
+def dist_point_to_edges(the_pnt, edges):
+    min_d = sys.float_info.max
+    nearest_pnt = None
+    for edge in edges:
+        dist, pnt = dist_point_to_edge(the_pnt, edge)
+        if dist is None:
+            continue
+        if dist < min_d:
+            min_d = dist
+            nearest_pnt = pnt     
+    return min_d, nearest_pnt
+    
+'''
+input
+    shape:          TopoDS_Shape
+output
+    pts:            [[float,float,float]]
+    uvs:            [[float,float]]
+    triangles:   [[int,int,int]]
+    triangle_faces: [TopoDS_Face]    
+'''    
+def triangulation_from_shape(shape):
+    linear_deflection = 0.1
+    angular_deflection = 0.5
+    mesh = BRepMesh_IncrementalMesh(shape, linear_deflection, False, angular_deflection, True)
+    mesh.Perform()
+    assert mesh.IsDone()
+    
+    pts = []
+    uvs = []
+    triangles = []
+    triangle_faces = []
+    faces = list_face(shape)
+    offset = 0
+    for f in faces:
+        aLoc = TopLoc_Location()
+        aTriangulation = BRep_Tool().Triangulation(f, aLoc).GetObject()
+        aTrsf = aLoc.Transformation()
+        aOrient = f.Orientation()
+
+        aNodes = aTriangulation.Nodes()
+        aUVNodes = aTriangulation.UVNodes()
+        aTriangles = aTriangulation.Triangles()
+        
+        for i in range(1, aTriangulation.NbNodes() + 1):
+            pt = aNodes.Value(i)
+            pt.Transform(aTrsf)
+            pts.append([pt.X(),pt.Y(),pt.Z()])
+            uv = aUVNodes.Value(i)
+            uvs.append([uv.X(),uv.Y()])
+        
+        for i in range(1, aTriangulation.NbTriangles() + 1):
+            n1, n2, n3 = aTriangles.Value(i).Get()
+            n1 -= 1
+            n2 -= 1
+            n3 -= 1
+            if aOrient == TopAbs_REVERSED:
+                tmp = n1
+                n1 = n2
+                n2 = tmp
+            n1 += offset
+            n2 += offset
+            n3 += offset
+            triangles.append([n1, n2, n3])
+            triangle_faces.append(f)
+        offset += aTriangulation.NbNodes()
+
+    return pts, uvs, triangles, triangle_faces
+
+if __name__ == '__main__':
+    print('occ_utils')
+     

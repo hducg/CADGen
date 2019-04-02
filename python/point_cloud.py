@@ -52,77 +52,21 @@ import occ_utils
 #    N = int(edge_len / resolution)
 #    edge_util = Edge(edge)
 #    edge_util.divide_by_number_of_points(N)
-    #                
-    
-'''
-input
-    shape:          TopoDS_Shape
-output
-    pts:            [[float,float,float]]
-    uvs:            [[float,float]]
-    triangles:   [[int,int,int]]
-    triangle_faces: [TopoDS_Face]    
-'''    
-def triangulation_from_shape(shape):
-    linear_deflection = 0.9
-    angular_deflection = 0.5
-    mesh = BRepMesh_IncrementalMesh(shape, linear_deflection, False, angular_deflection, True)
-    mesh.Perform()
-    assert mesh.IsDone()
-    
-    pts = []
-    uvs = []
-    triangles = []
-    triangle_faces = []
-    faces = occ_utils.set_face(shape)
-    offset = 0
-    for f in faces:
-        aLoc = TopLoc_Location()
-        aTriangulation = BRep_Tool().Triangulation(f, aLoc).GetObject()
-        aTrsf = aLoc.Transformation()
-        aOrient = f.Orientation()
+    #
 
-        aNodes = aTriangulation.Nodes()
-        aUVNodes = aTriangulation.UVNodes()
-        aTriangles = aTriangulation.Triangles()
-        
-        for i in range(1, aTriangulation.NbNodes() + 1):
-            pt = aNodes.Value(i)
-            pt.Transform(aTrsf)
-            pts.append([pt.X(),pt.Y(),pt.Z()])
-            uv = aUVNodes.Value(i)
-            uvs.append([uv.X(),uv.Y()])
-        
-        for i in range(1, aTriangulation.NbTriangles() + 1):
-            n1, n2, n3 = aTriangles.Value(i).Get()
-            n1 -= 1
-            n2 -= 1
-            n3 -= 1
-            if aOrient == TopAbs_REVERSED:
-                tmp = n1
-                n1 = n2
-                n2 = tmp
-            n1 += offset
-            n2 += offset
-            n3 += offset
-            triangles.append([n1, n2, n3])
-            triangle_faces.append(f)
-        offset += aTriangulation.NbNodes()
 
-    return pts, uvs, triangles, triangle_faces
 
-    
-'''
-input
-    uv1:    [float,float]
-    uv2:    [float,float]
-    uv3:    [float,float]
-    N1:     int
-    N2:     int
-output
-    uvs:    [[float,float]]
-'''    
 def uvs_from_interpolation(uv1, uv2, uv3, Nv, Nh):
+    '''
+    input
+        uv1:    [float,float]
+        uv2:    [float,float]
+        uv3:    [float,float]
+        N1:     int
+        N2:     int
+    output
+        uvs:    [[float,float]]
+    '''
     uvs = []
     for i in range(Nv + 1):#[0, Nv]
         t1 = i / Nv#[0, 1]
@@ -135,67 +79,69 @@ def uvs_from_interpolation(uv1, uv2, uv3, Nv, Nh):
             t2 = j / N #[0, 1]
             uv = np.multiply(uv12, t2) + np.multiply(uv13, 1 - t2)#uv12 * t2 + uv13 * (1 - t2)
             uvs.append(uv)
-            
-    return uvs 
-    
-    
-'''
-input
-    t:          ([[float,float,float],[float,float,float],[float,float,float]],
-                  [[float,float],[float,float],[float,float]],
-                  TopoDS_Face,
-                  float)
-output
-    samples:        [[float,float,float]]
-    normals:    [[float,float,float]]
-    f:          TopoDS_Face
-'''    
+
+    return uvs
+
+
+
 def points_sample_from_triangle(t):
+    '''
+    input
+        t:          ([[float,float,float],[float,float,float],[float,float,float]],
+                      [[float,float],[float,float],[float,float]],
+                      TopoDS_Face,
+                      float)
+    output
+        samples:        [[float,float,float]]
+        normals:    [[float,float,float]]
+        f:          TopoDS_Face
+    '''
     samples = []
     normals = []
 
     p = np.array([np.array(t[0][0]), np.array(t[0][1]), np.array(t[0][2])])
     l = np.array([np.sum(np.square(p[1] - p[2])), np.sum(np.square(p[0] - p[2])), np.sum(np.square(p[0] - p[1]))])
     li = np.argsort(l)
-    l = l[li]       
-    
+    l = l[li]
+
     resolution = t[3]
     Nv = int(np.sqrt(l[2]) / resolution)
     if Nv == 0:
         Nv = 1
     Nh = int(np.sqrt(l[0]) / resolution)
     if Nh == 0:
-        Nh =1 
-        
+        Nh =1
+
     uv0 = t[1][li[0]]
     uv1 = t[1][li[1]]
     uv2 = t[1][li[2]]
-    
+
     uvs = uvs_from_interpolation(uv0,uv1,uv2,Nv,Nh)
 
     f = t[2]
     surf = BRep_Tool_Surface(f)
     for uv in uvs:
-        pt = BRepAdaptor_Surface(f).Value(uv[0],uv[1])                
+        pt = BRepAdaptor_Surface(f).Value(uv[0],uv[1])
         samples.append([pt.X(),pt.Y(),pt.Z()])
         #   the normal
-        D = GeomLProp_SLProps(surf,uv[0],uv[1],1,0.01).Normal()  
+        D = GeomLProp_SLProps(surf,uv[0],uv[1],1,0.01).Normal()
         if f.Orientation() == TopAbs_REVERSED:
             D.Reverse()
         normals.append([D.X(),D.Y(),D.Z()])
-         
+
     return (samples, normals, f)
 
 
-'''
-input
-    shape: TopoDS_Shape
-    resolution: float        
-output
-    traingles: [([],[],TopoDS_Face,float)]
-'''
+
 def triangles_from_shape(shape, resolution):
-    tri_pts, tri_uvs, tri_facets, tri_faces = triangulation_from_shape(shape)
+    '''
+    input
+        shape: TopoDS_Shape
+        resolution: float
+    output
+        traingles: [([],[],TopoDS_Face,float)]
+    '''
+    tri_pts, tri_uvs, tri_facets, tri_faces = occ_utils.triangulation_from_shape(shape)
 #    print('number of traingulation nodes:', len(tri_pts))
     triangles = []
     for i in range(len(tri_facets)):
@@ -205,50 +151,52 @@ def triangles_from_shape(shape, resolution):
         for idx in t_idx:
             pts.append(tri_pts[idx])
             uv.append(tri_uvs[idx])
-        f= tri_faces[i]   
-        triangles.append((pts,uv,f,resolution)) 
+        f= tri_faces[i]
+        triangles.append((pts,uv,f,resolution))
 
     return triangles
 
-        
-'''
-input
-    shape:      TopoDS_Shape
-    name_map:   {TopoDS_Face:{'label':int, 'id':int}}
-    resolution: float
-output
-    cloud_pts:      [[float,float,float]]
-    cloud_normals:  [[float,float,float]]
-    cloud_segs:     [int]
-    face_ids:       [int]
-'''    
-def point_cloud_from_labeled_shape(shape, label_map, id_map, resolution=0.1): 
-#    print('point_cloud_from_labeled_shape')
+
+
+def point_cloud_from_labeled_shape(shape, label_map, id_map, resolution=0.1):
+    '''
+    input
+        shape:      TopoDS_Shape
+        name_map:   {TopoDS_Face:{'label':int, 'id':int}}
+        resolution: float
+    output
+        cloud_pts:      [[float,float,float]]
+        cloud_normals:  [[float,float,float]]
+        cloud_segs:     [int]
+        face_ids:       [int]
+    '''
+    #    print('point_cloud_from_labeled_shape')
     cloud_pts = []
     cloud_normals = []
     cloud_feats = []
     cloud_segs = []
     face_ids = []
-    triangles = triangles_from_shape(shape, resolution)   
+    triangles = triangles_from_shape(shape, resolution)
     for t in triangles:
         r = points_sample_from_triangle(t)
         cloud_pts += r[0]
-        cloud_normals += r[1]        
+        cloud_normals += r[1]
         cloud_segs += [label_map[r[2]]] * len(r[0])
         face_ids += [id_map[r[2]]] * len(r[0])
-#    print('number of points:', len(cloud_pts))            
+#    print('number of points:', len(cloud_pts))
     return cloud_pts, cloud_normals, cloud_feats, cloud_segs, face_ids
 
 
-'''
-input
-    shape:          TopoDS_Shape
-output
-    resolution:     float
-'''    
+
 def resolution_from_shape(shape):
+    '''
+    input
+        shape:          TopoDS_Shape
+    output
+        resolution:     float
+    '''
     xmin, ymin, zmin, xmax, ymax, zmax, xlen, ylen, zlen = occ_utils.get_boundingbox(shape, use_mesh = False)
     resolution = max(xlen, ylen, zlen) / 256
-    
-    return resolution        
+
+    return resolution
 

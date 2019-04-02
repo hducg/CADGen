@@ -13,7 +13,7 @@ from OCC.BRepBuilderAPI import (BRepBuilderAPI_Transform, BRepBuilderAPI_MakeWir
 from OCC.BRepFeat import BRepFeat_MakePrism
 from OCC.BRepPrimAPI import BRepPrimAPI_MakePrism
 from OCC.gp import gp_Ax2, gp_Pnt, gp_Dir, gp_Ax1, gp_Trsf, gp_Vec, gp_OZ, gp_Circ
-from OCC.TopAbs import TopAbs_REVERSED
+from OCC.TopAbs import TopAbs_REVERSED, TopAbs_FACE
 from OCC.TopoDS import topods
 from OCC.BRepTools import breptools_UVBounds
 from OCC.BRep import BRep_Tool_Surface
@@ -317,7 +317,7 @@ def face_bottom(shape):
     output
         f: TopoDS_Face
     '''
-    f_list = occ_utils.set_face(shape)
+    f_list = occ_utils.list_face(shape)
     face = None
     for face in f_list:
         normal = occ_utils.normal_to_face_center(face)
@@ -337,13 +337,14 @@ def map_face_before_and_after_feat(base, feature_maker):
     '''
 
     fmap = {}
-    base_faces = occ_utils.set_face(base)
+    base_faces = occ_utils.list_face(base)
 
     for face in base_faces:
         if feature_maker.IsDeleted(face):
             continue
 
         fmap[face] = []
+        
         modified = feature_maker.Modified(face)
         if modified.IsEmpty():
             fmap[face].append(face)
@@ -351,9 +352,11 @@ def map_face_before_and_after_feat(base, feature_maker):
 
         occ_it = TopTools_ListIteratorOfListOfShape(modified)
         while occ_it.More():
-            fmap[face].append(occ_it.Value())
+            a_shape = occ_it.Value()
+            assert a_shape.ShapeType() == TopAbs_FACE
+            fmap[face].append(topods.Face(a_shape))
             occ_it.Next()
-
+        
     return fmap
 
 
@@ -364,10 +367,10 @@ def map_from_name(shape, name):
         shape: TopoDS_Shape
         name: string
     output
-        name_map: {TopoDS_Face: string}
+        name_map: {TopoDS_Face: int}
     '''
     name_map = {}
-    faces = occ_utils.set_face(shape)
+    faces = occ_utils.list_face(shape)
 
     for one_face in faces:
         name_map[one_face] = name
@@ -387,7 +390,7 @@ def map_from_shape_and_name(fmap, old_map, new_shape, new_name):
         new_map: {TopoDS_Face: int}
     '''
     new_map = {}
-    new_faces = occ_utils.set_face(new_shape)
+    new_faces = occ_utils.list_face(new_shape)
     for oldf in fmap:
         old_name = old_map[oldf]
         for samef in fmap[oldf]:
@@ -490,7 +493,7 @@ def shape_drain():
     shape_name = feat_name + '-' + wire_name
 
     fid = 0
-    fset = occ_utils.set_face(shape)
+    fset = occ_utils.list_face(shape)
     id_map = {}
     for shape_face in fset:
         id_map[shape_face] = fid
