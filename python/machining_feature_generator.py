@@ -26,8 +26,8 @@ from OCC.Geom import Geom_Circle
 from OCC.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.TopoDS import TopoDS_Vertex
 from OCC.TopAbs import TopAbs_VERTEX, TopAbs_REVERSED
+from OCC.TopExp import TopExp_Explorer, topexp
 
-sys.path.append('../CADGen/python')
 import occ_utils
 import shape_factory
 import geom_utils
@@ -67,9 +67,9 @@ def triangulation_from_face(face):
         edges = [(pids[0], pids[1]), (pids[0], pids[2]), (pids[1], pids[2])]
         for edge in edges:
             if edge in et_map:
-                et_map[edge].append( i -1)
+                et_map[edge].append(i - 1)
             else:
-                et_map[edge] = [i-1]
+                et_map[edge] = [i - 1]
 
     return pts, triangles, vt_map, et_map
 
@@ -217,11 +217,12 @@ def face_hexagon(ref_pnts, normal):
     return face_maker.Face()
 
 
-def face_circular_end_rect(ref_pnts, normal):
+def face_circular_end_rect(ref_pnts):
 
     return None
 
-def face_open_circle_1(ref_pnts, normal):
+def face_open_circle_1(ref_pnts):
+    
     return None
 
 def face_circle_2(ref_pnts):
@@ -400,11 +401,14 @@ def bound_face(f_list):
 def bound_1(f_list):
     bounds = []
     for face in f_list:
-        pts, triangles, vt_map, et_map = triangulation_from_face(face)
+        pts, triangles, vt_map, et_map = triangulation_from_face(face)        
+        segs = []
+        for et in et_map:
+            if len(et_map[et]) == 1:
+                segs.append([pts[et[0]], pts[et[1]]])              
         pts = np.asarray(pts)
-        normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))        
-        f_util = OCCUtils.face.Face(face)
-        edges = f_util.edges()
+        normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))
+        edges = occ_utils.list_edge(face)
         for edge in edges:
             if occ_utils.type_edge(edge) != 'line':
                 continue
@@ -412,13 +416,9 @@ def bound_1(f_list):
             if edge_util.length() < 2.0:
                 continue
             
-            pnt1 = occ_utils.as_list(edge_util.first_vertex())
-            pnt2 = occ_utils.as_list(edge_util.last_vertex())
-            # make sure pnt1-->pnt2 in the right direction of the loop 
-            if edge_util.Orientation() == TopAbs_REVERSED:
-                pnt = pnt2
-                pnt2 = pnt1
-                pnt1 = pnt
+            pnt1 = np.array(occ_utils.as_list(topexp.FirstVertex(edge, True)))
+            pnt2 = np.array(occ_utils.as_list(topexp.LastVertex(edge, True)))
+                            
             edge_dir = pnt2 - pnt1
             edge_len = np.linalg.norm(edge_dir)
             edge_dir = edge_dir / edge_len
@@ -427,11 +427,17 @@ def bound_1(f_list):
             edge_len -= 1.0
             
             edge_normal = np.cross(normal, edge_dir)
-            
+            edge_normal = edge_normal / np.linalg.norm(edge_normal)
             sample_pnts = [pnt1 + t * edge_dir for t in [0.0, edge_len * 0.25, edge_len * 0.5, edge_len * 0.75]]
             for pnt in sample_pnts:
-                bounds.append(geom_utils.search_rect_inside_bound_2(pnt, edge_normal, edge_dir, pts))
-            
+                intersects = geom_utils.ray_segment_set_intersect(pnt, edge_normal, segs)                
+                intersects.sort()
+                intersects = intersects[1:]
+                
+                if len(intersects) == 0:
+                    print('no intersects')
+                    continue                    
+                bounds.append(geom_utils.search_rect_inside_bound_2(pnt, edge_normal * intersects[0], edge_dir, pts))       
     return bounds
 
 
@@ -782,13 +788,14 @@ def shape_from_machining_feature():
     label_map = shape_factory.map_from_name(stock, FEAT_NAMES.index('stock'))
     triangulate_shape(stock)
 
-    num_feats = random.randint(2, 2)
+    num_feats = random.randint(1, 1)
     for i in range(num_feats):
         triangulate_shape(stock)
         # step 1: sample feature arameters [type, width, depth]
-        feat_type = random.choice(FEAT_NAMES[16:20])       
+        feat_type = 'circular_through_slot'#random.choice(FEAT_NAMES[16:20])       
         f_list = face_filter(label_map, [FEAT_NAMES.index('stock')], ['plane'])
         bounds = FEAT_BOUND_SAMPLER[feat_type](f_list)
+        print(len(bounds), 'bounds')
         feat_face = None
         random.shuffle(bounds)
         for bound in bounds:
@@ -825,6 +832,7 @@ if __name__ == '__main__':
             pnt1 = occ_utils.as_occ(bound[i], gp_Pnt)
             pnt2 = occ_utils.as_occ(bound[j], gp_Pnt)
             if np.linalg.norm(bound[i] - bound[j]) < 0.000001:
+                print('bound edge has zero length')
                 continue
             seg_maker = GC_MakeSegment(pnt1, pnt2)
             if seg_maker.IsDone():

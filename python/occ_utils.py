@@ -8,8 +8,9 @@ import random
 import os
 import sys
 import math
+import numpy as np
 
-from OCC.TopExp import TopExp_Explorer
+from OCC.TopExp import TopExp_Explorer, topexp
 from OCC.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE, TopAbs_VERTEX
 from OCC.TopoDS import topods, TopoDS_Shape, TopoDS_Vertex, TopoDS_Edge, TopoDS_Face
 from OCC.Bnd import Bnd_Box
@@ -33,7 +34,7 @@ from OCC.TopLoc import TopLoc_Location
 from OCC.StlAPI import StlAPI_Reader
 from OCC.GeomLib import GeomLib_IsPlanarSurface
 from OCC.BRepExtrema import BRepExtrema_ExtPC, BRepExtrema_DistShapeShape
-from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeVertex
+from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeVertex, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeFace
 
 
 SURFACE_TYPE = ['plane', 'cylinder', 'cone', 'sphere', 'torus', 'bezier', 'bspline', 'revolution', 'extrusion', 'offset', 'other']
@@ -371,6 +372,24 @@ def triangulation_from_shape(shape):
 
     return pts, uvs, triangles, triangle_faces
 
+def make_polygon_face(pnts):
+    wire_maker = BRepBuilderAPI_MakeWire()
+    verts = [BRepBuilderAPI_MakeVertex(as_occ(pnt, gp_Pnt)).Vertex() for pnt in pnts]
+    for i in range(len(verts)):
+        j = (i + 1) % len(verts)
+        wire_maker.Add(BRepBuilderAPI_MakeEdge(verts[i], verts[j]).Edge())
+        
+    return BRepBuilderAPI_MakeFace(wire_maker.Wire()).Face()
+    
 if __name__ == '__main__':
     print('occ_utils')
-     
+    pnts = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    face = make_polygon_face(pnts)
+    face_exp = TopExp_Explorer(face.Oriented(TopAbs_REVERSED), TopAbs_EDGE)
+    print(as_list(normal_to_face_center(face)))
+    while face_exp.More():
+        edge = topods.Edge(face_exp.Current())
+        print(edge.Orientation())
+        print(as_list(topexp.FirstVertex(edge, True)), as_list(topexp.LastVertex(edge, True)))
+        
+        face_exp.Next()

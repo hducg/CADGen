@@ -118,6 +118,8 @@ def dist_pnt_line(pnt, pnt1, pnt2, normal):
     
 def ray_segment_intersect(ray_pnt, ray_dir, pnt1, pnt2):
     thres = 0.000001
+    pnt1 = np.array(pnt1)
+    pnt2 = np.array(pnt2)
     seg_dir = pnt2 - pnt1
     ray_dir = ray_dir / np.linalg.norm(ray_dir)
     
@@ -128,33 +130,29 @@ def ray_segment_intersect(ray_pnt, ray_dir, pnt1, pnt2):
     normal = np.cross(seg_dir, ray_dir)
     if origin_on_segment: 
         if np.dot(vec1, vec2) < thres:
-            return ray_pnt
+            return 0.0
         else:
             if np.linalg.norm(normal) < thres:
                 dist1 = np.dot(vec1, ray_dir)
                 dist2 = np.dot(vec2, ray_dir)
                 if dist1 > thres and dist2 > thres:
                     if dist1 < dist2:
-                        return pnt1
+                        return np.linalg.norm(vec1)
                     else:
-                        return pnt2
+                        return np.linalg.norm(vec2)
             else:
-                print('ray origin on line but not inside segment and not parallel')
                 return None
             
     # check if ray and segment are parallel
     if np.linalg.norm(normal) < thres:
-        print('ray origin not on line and parallel')
         return None
 
     # check if ray lie on one side of segment
     if np.dot(vec1, ray_dir) < 0 and np.dot(vec2, ray_dir) < 0:
-        print('ray aside segment')
         return None
     
     # check if segment lie on one side of ray
-    if np.dot(np.cross(vec1, ray_dir), np.cross(vec2, ray_dir)) > 0:
-        print('segment aside ray')
+    if np.dot(np.cross(vec1, ray_dir), np.cross(vec2, ray_dir)) > 0:        
         return None            
     
         
@@ -162,7 +160,18 @@ def ray_segment_intersect(ray_pnt, ray_dir, pnt1, pnt2):
     seg_normal = seg_normal / np.linalg.norm(seg_normal)
     dist = np.dot(vec1, seg_normal) / np.dot(ray_dir, seg_normal)
     
-    return ray_pnt + dist * ray_dir
+    return dist
+
+    
+def ray_segment_set_intersect(ray_pnt, ray_dir, segs):
+    intersects = []
+    for seg in segs:
+        int_pnt = ray_segment_intersect(ray_pnt, ray_dir, seg[0], seg[1])
+        if int_pnt != None:
+            intersects.append(int_pnt)
+            
+    return intersects
+    
     
 def search_rect_inside_bound_2(pnt1, vec0, vec2, bnd_pnts):
     verts = np.array([pnt1 + vec0, pnt1, pnt1 + vec2, pnt1 + vec0 + vec2])      
@@ -170,8 +179,10 @@ def search_rect_inside_bound_2(pnt1, vec0, vec2, bnd_pnts):
     if len(in_pnts) == 0:        
         return verts
 
-    vec0 = vec0 / np.linalg.norm(vec0)
-    vec2 = vec2 / np.linalg.norm(vec2)
+    vec0_len = np.linalg.norm(vec0)
+    vec0 = vec0 / vec0_len
+    vec2_len = np.linalg.norm(vec2)
+    vec2 = vec2 / vec2_len
     len2 = min([np.dot(pnt - pnt1, vec2) for pnt in in_pnts])
     len0 = min([np.dot(pnt - pnt1, vec0) for pnt in in_pnts])
     
@@ -207,8 +218,8 @@ def search_rect_inside_bound_3(pnt1, pnt2, vec1, vec2, bnd_pnts):
     return verts
     
 if __name__ == '__main__':
-    pnt = np.array([0.0, 0.5, 0.0])
+    pnt = np.array([0.5, -0.5, 0.0])
     pnt1 = np.array([0.0, 0.0, 0.0])
     pnt2 = np.array([1.0, 0.0, 0.0])
-    normal = np.array([1.0, 0.0, 0.0])
+    normal = np.array([0.0, 1.0, 0.0])
     print(ray_segment_intersect(pnt, normal, pnt1, pnt2))
