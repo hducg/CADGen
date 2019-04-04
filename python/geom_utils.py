@@ -4,6 +4,7 @@ Created on Fri Mar 22 15:03:49 2019
 
 @author: 2624224
 """
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from multiprocessing import Pool
@@ -141,25 +142,31 @@ def ray_segment_intersect(ray_pnt, ray_dir, pnt1, pnt2):
                     else:
                         return np.linalg.norm(vec2)
             else:
-                return None
+                return float('-inf')
             
     # check if ray and segment are parallel
     if np.linalg.norm(normal) < thres:
-        return None
+        return float('-inf')
 
     # check if ray lie on one side of segment
     if np.dot(vec1, ray_dir) < 0 and np.dot(vec2, ray_dir) < 0:
-        return None
+        return float('-inf')
     
     # check if segment lie on one side of ray
     if np.dot(np.cross(vec1, ray_dir), np.cross(vec2, ray_dir)) > 0:        
-        return None            
+        return float('-inf')            
     
         
     seg_normal = np.cross(normal, seg_dir)
     seg_normal = seg_normal / np.linalg.norm(seg_normal)
     dist = np.dot(vec1, seg_normal) / np.dot(ray_dir, seg_normal)
     
+    try:
+        assert not math.isnan(dist), 'dist is not a number'
+    except AssertionError as error:
+        print('ray_segment_intersect', error)
+        print(ray_pnt, ray_dir, pnt1, pnt2)
+        return float('-inf')
     return dist
 
     
@@ -167,7 +174,7 @@ def ray_segment_set_intersect(ray_pnt, ray_dir, segs):
     intersects = []
     for seg in segs:
         int_pnt = ray_segment_intersect(ray_pnt, ray_dir, seg[0], seg[1])
-        if int_pnt != None:
+        if int_pnt >= 0.0:
             intersects.append(int_pnt)
             
     return intersects
@@ -193,6 +200,16 @@ def search_rect_inside_bound_2(pnt1, vec0, vec2, bnd_pnts):
     verts[2] = verts[1] + vec2
     verts[3] = verts[1] + vec0 + vec2
 
+    try:
+        for vert in verts:
+            assert not math.isnan(vert[0]), 'vert[0] is not a number'
+            assert not math.isnan(vert[1]), 'vert[1] is not a number'
+            assert not math.isnan(vert[2]), 'vert[2] is not a number'
+    except AssertionError as error:
+        print('search_rect_inside_bound_2', error)
+        print(pnt1, vec0, vec2)
+        return None
+        
     return verts
     
 def search_rect_inside_bound_3(pnt1, pnt2, vec1, vec2, bnd_pnts):

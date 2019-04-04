@@ -372,14 +372,6 @@ def triangulation_from_shape(shape):
 
     return pts, uvs, triangles, triangle_faces
 
-def make_polygon_face(pnts):
-    wire_maker = BRepBuilderAPI_MakeWire()
-    verts = [BRepBuilderAPI_MakeVertex(as_occ(pnt, gp_Pnt)).Vertex() for pnt in pnts]
-    for i in range(len(verts)):
-        j = (i + 1) % len(verts)
-        wire_maker.Add(BRepBuilderAPI_MakeEdge(verts[i], verts[j]).Edge())
-        
-    return BRepBuilderAPI_MakeFace(wire_maker.Wire()).Face()
     
 if __name__ == '__main__':
     print('occ_utils')
