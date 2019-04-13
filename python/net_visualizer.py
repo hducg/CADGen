@@ -53,8 +53,9 @@ if __name__ == '__main__':
 
     with open(ARGS.filterpath, 'rb') as file:
         filters = pickle.load(file)
-    
-    feat = filters[2].reshape(27,3)
+    print(filters.shape)
+    print(filters[7])
+    feat = filters[7].reshape(27,3)
 
     for i in range(27):
         pt = center_list[i]

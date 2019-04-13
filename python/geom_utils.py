@@ -69,8 +69,13 @@ def ray_triangle_set_intersect(ray_origin, ray_direction, tri_list):
         results.append(ray_triangle_intersect(ray_tri))
 #    results = Pool().map(ray_triangle_intersect, ray_tri_list)
     results = np.asarray(results)
-
-    return min(results[results > 0])
+    results = results[results > 0]
+    if np.size(results) == 0:
+        print(ray_origin, ray_direction)
+        print('ray no intersect', ray_origin, ray_direction)
+        return float('-inf')
+        
+    return min(results)
 
 
 def point_in_polygon(the_pnt, verts, closed = True, normal = None):
@@ -190,8 +195,8 @@ def search_rect_inside_bound_2(pnt1, vec0, vec2, bnd_pnts):
     vec0 = vec0 / vec0_len
     vec2_len = np.linalg.norm(vec2)
     vec2 = vec2 / vec2_len
-    len2 = min([np.dot(pnt - pnt1, vec2) for pnt in in_pnts])
-    len0 = min([np.dot(pnt - pnt1, vec0) for pnt in in_pnts])
+    len2 = min([np.dot(pnt - pnt1, vec2) for pnt in in_pnts] + [vec2_len])
+    len0 = min([np.dot(pnt - pnt1, vec0) for pnt in in_pnts] + [vec0_len])
     
     vec0 = vec0 * len0 
     vec2 = vec2 * len2     
@@ -222,10 +227,10 @@ def search_rect_inside_bound_3(pnt1, pnt2, vec1, vec2, bnd_pnts):
     line_dir = pnt2 - pnt1
     perp_dir = np.cross(normal, line_dir)
     perp_dir = perp_dir / np.linalg.norm(perp_dir)
-    
-    dist = min([np.dot(pnt - pnt1, perp_dir) for pnt in in_pnts])
+
     norm1 = np.dot(vec1, perp_dir)
-    norm2 = np.dot(vec2, perp_dir)
+    norm2 = np.dot(vec2, perp_dir)    
+    dist = min([np.dot(pnt - pnt1, perp_dir) for pnt in in_pnts] + [norm1, norm2])
     vec1 = vec1 * dist / norm1
     vec2 = vec2 * dist / norm2
      
@@ -233,6 +238,31 @@ def search_rect_inside_bound_3(pnt1, pnt2, vec1, vec2, bnd_pnts):
     verts[3] = verts[2] + vec2
 
     return verts
+
+
+def points_inside_rect(pnt0, pnt1, pnt2, pnt3, resolution = 0.5):
+    pnt0 = np.array(pnt0)
+    pnt1 = np.array(pnt1)
+    pnt2 = np.array(pnt2)
+    pnt3 = np.array(pnt3)
+    
+    dir_w = pnt2 - pnt1
+    dir_h = pnt0 - pnt1
+    width = np.linalg.norm(dir_w)
+    height = np.linalg.norm(dir_h)
+    num_w = int(width / resolution)
+    num_h = int(height / resolution)
+    
+    delta_w = width / num_w
+    delta_h = width / num_h
+    
+    dir_w = dir_w / width
+    dir_h = dir_h / height
+    
+    idx = np.array(np.meshgrid(np.arange(0, num_w + 1), np.arange(0, num_h + 1))).T.reshape(-1,2)    
+    points = pnt1 + dir_w * delta_w * np.array(idx[:, 0]).reshape(-1, 1) + dir_h * delta_h * np.array(idx[:, 1]).reshape(-1, 1)
+    return points
+
     
 if __name__ == '__main__':
     pnt = np.array([0.5, -0.5, 0.0])

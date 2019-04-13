@@ -10,7 +10,7 @@ import sys
 import math
 import numpy as np
 
-from OCC.TopExp import TopExp_Explorer, topexp
+from OCC.TopExp import TopExp_Explorer, topexp, topexp_MapShapesAndAncestors
 from OCC.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE, TopAbs_VERTEX
 from OCC.TopoDS import topods, TopoDS_Shape, TopoDS_Vertex, TopoDS_Edge, TopoDS_Face
 from OCC.Bnd import Bnd_Box
@@ -35,6 +35,10 @@ from OCC.StlAPI import StlAPI_Reader
 from OCC.GeomLib import GeomLib_IsPlanarSurface
 from OCC.BRepExtrema import BRepExtrema_ExtPC, BRepExtrema_DistShapeShape
 from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeVertex, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeFace
+from OCC.BRepPrimAPI import BRepPrimAPI_MakeBox
+from OCC.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
+from OCC.TopOpeBRepBuild import TopOpeBRepBuild_Tools
+from OCC.Display import SimpleGui
 
 
 SURFACE_TYPE = ['plane', 'cylinder', 'cone', 'sphere', 'torus', 'bezier', 'bspline', 'revolution', 'extrusion', 'offset', 'other']
@@ -43,6 +47,8 @@ CURVE_TYPE = ['line', 'circle', 'ellipse', 'hyperbola', 'parabola', 'bezier', 'b
 import OCCUtils.edge
 import OCCUtils.face
 import OCCUtils.Topology
+
+import geom_utils
 
 
 def list_face(shape):
@@ -372,16 +378,39 @@ def triangulation_from_shape(shape):
 
     return pts, uvs, triangles, triangle_faces
 
-    
-if __name__ == '__main__':
-    print('occ_utils')
-    pnts = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-    face = make_polygon_face(pnts)
-    face_exp = TopExp_Explorer(face.Oriented(TopAbs_REVERSED), TopAbs_EDGE)
-    print(as_list(normal_to_face_center(face)))
-    while face_exp.More():
-        edge = topods.Edge(face_exp.Current())
-        print(edge.Orientation())
-        print(as_list(topexp.FirstVertex(edge, True)), as_list(topexp.LastVertex(edge, True)))
+def face_polygon(pnts):
+    wire_maker = BRepBuilderAPI_MakeWire()
+    verts = [BRepBuilderAPI_MakeVertex(as_occ(pnt, gp_Pnt)).Vertex() for pnt in pnts]
+    for i in range(len(verts)):
+        j = (i + 1) % len(verts)
+        wire_maker.Add(BRepBuilderAPI_MakeEdge(verts[i], verts[j]).Edge())
         
-        face_exp.Next()
+    return BRepBuilderAPI_MakeFace(wire_maker.Wire()).Face() 
+
+    
+def face_adjacent(shape, face, edge):
+    efmap = TopTools_IndexedDataMapOfShapeListOfShape()
+    topexp_MapShapesAndAncestors(shape, TopAbs_EDGE, TopAbs_FACE, efmap)
+    adjface = TopoDS_Face()
+    if TopOpeBRepBuild_Tools.GetAdjacentFace(face, edge, efmap, adjface):
+        return adjface
+    else:
+        return None
+        
+        
+if __name__ == '__main__':
+    OCC_DISPLAY, START_OCC_DISPLAY, ADD_MENU, _ = SimpleGui.init_display()
+    OCC_DISPLAY.EraseAll()
+    
+    face = face_polygon([[0, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0]])
+    OCC_DISPLAY.DisplayShape(face)
+    pnts = geom_utils.points_inside_rect([0, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0])    
+    for pnt in pnts:
+        vert = as_occ(pnt, TopoDS_Vertex)
+        OCC_DISPLAY.DisplayShape(vert)
+            
+    OCC_DISPLAY.View_Iso()
+    OCC_DISPLAY.FitAll()
+
+    START_OCC_DISPLAY()
+        

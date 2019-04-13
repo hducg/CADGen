@@ -8,6 +8,7 @@ Created on Tue Mar 19 11:20:39 2019
 import sys
 import random
 import math
+import logging
 
 import numpy as np
 
@@ -27,6 +28,8 @@ from OCC.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.TopoDS import TopoDS_Vertex
 from OCC.TopAbs import TopAbs_VERTEX, TopAbs_REVERSED
 from OCC.TopExp import TopExp_Explorer, topexp
+from OCC.BRepFilletAPI import BRepFilletAPI_MakeFillet
+
 
 import occ_utils
 import shape_factory
@@ -85,15 +88,7 @@ def triangles_from_faces(faces):
 
 #==============================================================================
 # sketch face generator    
-#==============================================================================
-def face_polygon(pnts):
-    wire_maker = BRepBuilderAPI_MakeWire()
-    verts = [BRepBuilderAPI_MakeVertex(occ_utils.as_occ(pnt, gp_Pnt)).Vertex() for pnt in pnts]
-    for i in range(len(verts)):
-        j = (i + 1) % len(verts)
-        wire_maker.Add(BRepBuilderAPI_MakeEdge(verts[i], verts[j]).Edge())
-        
-    return BRepBuilderAPI_MakeFace(wire_maker.Wire()).Face()   
+#============================================================================== 
     
 
 def face_circle(ref_pnts):
@@ -105,7 +100,7 @@ def face_circle(ref_pnts):
     try:
         assert width > 2.0 and height > 2.0, 'width or height too small'
     except AssertionError as error:
-        print('face_circle', error)
+        logging.exception('error caught')
         print(width, height)
         return None
     
@@ -113,13 +108,13 @@ def face_circle(ref_pnts):
     dir_h = dir_h / height
     normal = np.cross(dir_w, dir_h)
     
-    radius = random.uniform(1.0, min(width, height))
+    radius = random.uniform(1.0, min(width / 2, height / 2))
     
     offset_w = random.uniform(radius, width - radius)
     offset_h = random.uniform(radius, height - radius)
-    center = ref_pnts[0] + dir_w * offset_w + dir_h * offset_h
+    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
 
-    circ = gp_Circ(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), normal), radius)
+    circ = gp_Circ(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), occ_utils.as_occ(normal, gp_Dir)), radius)
     edge = BRepBuilderAPI_MakeEdge(circ, 0., 2*math.pi).Edge()
     outer_wire = BRepBuilderAPI_MakeWire(edge).Wire()
 
@@ -133,7 +128,7 @@ def face_circle_1(ref_pnts):
     edge_dir = ref_pnts[2] - ref_pnts[1]
     width = np.linalg.norm(edge_dir)
     edge_dir = edge_dir / width
-    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1]) - 1.0
+    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1])
 
     try:
         assert width > 2.0 and height > 1.0, 'width or height too small'
@@ -201,16 +196,95 @@ def face_circle_2(ref_pnts):
 
     
 def face_circular_end_rect(ref_pnts):
-
+    
     return None
 
     
-def face_open_circular_end_rect_v(ref_pnts, normal):
-    return None
+def face_open_circular_end_rect_v(ref_pnts):
+    dir_w = ref_pnts[2] - ref_pnts[1]
+    dir_h = ref_pnts[0] - ref_pnts[1]
+    width = np.linalg.norm(dir_w)
+    height = np.linalg.norm(dir_h)
+
+    try:
+        assert width > 1.0 and height > 1.0, 'width or height too small'
+    except AssertionError as error:
+        print('face_circle_2', error)
+        print(width, height)
+        return None
+
+    dir_w = dir_w / width
+    dir_h = dir_h / height
+    normal = np.cross(dir_w, dir_h)
+
+    rect_w = random.uniform(1.0, min(width, height))        
+    rect_h = random.uniform(rect_w / 2 + 0.5, height)
+    offset = random.uniform(0.0, width - rect_w)
+    pt1 = ref_pnts[1] + dir_w * offset
+    pt2 = pt1 + dir_w * rect_w
+    pt3 = pt2 + dir_h * (rect_h - rect_w / 2)
+    pt4 = pt1 + dir_h * (rect_h - rect_w / 2)
+    
+    center = pt4 + dir_w * rect_w / 2
+    circ = gp_Circ(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), occ_utils.as_occ(normal, gp_Dir)), rect_w / 2)
+    pt1 = occ_utils.as_occ(pt1, gp_Pnt)
+    pt2 = occ_utils.as_occ(pt2, gp_Pnt)
+    pt3 = occ_utils.as_occ(pt3, gp_Pnt)
+    pt4 = occ_utils.as_occ(pt4, gp_Pnt)    
+    seg_maker = [GC_MakeSegment(pt1, pt2), GC_MakeSegment(pt2, pt3), GC_MakeArcOfCircle(circ, pt3, pt4, True), GC_MakeSegment(pt4, pt1)]
+    wire_maker = BRepBuilderAPI_MakeWire()
+    for sm in seg_maker:
+        edge = BRepBuilderAPI_MakeEdge(sm.Value()).Edge()
+        wire_maker.Add(edge)
+            
+    face_maker = BRepBuilderAPI_MakeFace(wire_maker.Wire())
+    
+    return face_maker.Face()
 
     
-def face_open_circular_end_rect_h(ref_pnts, normal):
-    return None
+def face_open_circular_end_rect_h(ref_pnts):
+    dir_w = ref_pnts[2] - ref_pnts[1]
+    dir_h = ref_pnts[0] - ref_pnts[1]
+    width = np.linalg.norm(dir_w)
+    height = np.linalg.norm(dir_h)
+
+    try:
+        assert width > 2.0 and height > 0.5, 'width or height too small'
+    except AssertionError as error:
+        print('face_circle_2', error)
+        print(width, height)
+        return None
+
+    dir_w = dir_w / width
+    dir_h = dir_h / height
+    normal = np.cross(dir_w, dir_h)
+
+    rect_h = random.uniform(0.5, min(height, width / 2))    
+    rect_w = random.uniform(2 * rect_h + 1.0, width)        
+    offset = random.uniform(0.0, width - rect_w)
+    pt1 = ref_pnts[1] + dir_w * offset
+    pt2 = pt1 + dir_w * rect_w
+    pt3 = pt2 - dir_w * rect_h + dir_h * rect_h
+    pt4 = pt1 + dir_w * rect_h + dir_h * rect_h
+    
+    center1 = pt1 + dir_w * rect_h
+    center2 = pt2 - dir_w * rect_h
+    circ1 = gp_Circ(gp_Ax2(occ_utils.as_occ(center1, gp_Pnt), occ_utils.as_occ(normal, gp_Dir)), rect_h)
+    circ2 = gp_Circ(gp_Ax2(occ_utils.as_occ(center2, gp_Pnt), occ_utils.as_occ(normal, gp_Dir)), rect_h)
+    pt1 = occ_utils.as_occ(pt1, gp_Pnt)
+    pt2 = occ_utils.as_occ(pt2, gp_Pnt)
+    pt3 = occ_utils.as_occ(pt3, gp_Pnt)
+    pt4 = occ_utils.as_occ(pt4, gp_Pnt)
+    
+    seg_maker = [GC_MakeSegment(pt1, pt2), GC_MakeArcOfCircle(circ2, pt2, pt3, True), GC_MakeSegment(pt3, pt4), GC_MakeArcOfCircle(circ1, pt4, pt1, True)]
+    wire_maker = BRepBuilderAPI_MakeWire()
+    for sm in seg_maker:
+        edge = BRepBuilderAPI_MakeEdge(sm.Value()).Edge()
+        wire_maker.Add(edge)
+            
+    face_maker = BRepBuilderAPI_MakeFace(wire_maker.Wire())
+    
+    return face_maker.Face()
 
     
 def face_hexagon(ref_pnts):
@@ -228,13 +302,13 @@ def face_hexagon(ref_pnts):
     
     dir_w = dir_w / width
     dir_h = dir_h / height
-    normal = np.cross(dir_w, dir_h)
+    normal = occ_utils.as_occ(np.cross(dir_w, dir_h), gp_Dir)
 
-    radius = random.uniform(1.0, min(width, height))
+    radius = random.uniform(1.0, min(width / 2, height / 2))
     
     offset_w = random.uniform(radius, width - radius)
     offset_h = random.uniform(radius, height - radius)
-    center = ref_pnts[0] + dir_w * offset_w + dir_h * offset_h
+    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
     
     circ = Geom_Circle(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), normal), radius)
 
@@ -256,7 +330,7 @@ def face_hexagon(ref_pnts):
     ang6 = ang5 + math.pi / 3
     pt6 = occ_utils.as_list(circ.Value(ang6))
 
-    return face_polygon([pt1, pt2, pt3, pt4, pt5, pt6])
+    return occ_utils.face_polygon([pt1, pt2, pt3, pt4, pt5, pt6])
 
     
 def face_oring(ref_pnts):
@@ -274,13 +348,13 @@ def face_oring(ref_pnts):
     
     dir_w = dir_w / width
     dir_h = dir_h / height
-    normal = np.cross(dir_w, dir_h)
+    normal = occ_utils.as_occ(np.cross(dir_w, dir_h), gp_Dir)
 
-    outer_r = random.uniform(1.0, min(width, height))
+    outer_r = random.uniform(1.0, min(width / 2, height / 2))
     
     offset_w = random.uniform(outer_r, width - outer_r)
     offset_h = random.uniform(outer_r, height - outer_r)
-    center = ref_pnts[0] + dir_w * offset_w + dir_h * offset_h
+    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
     
     inner_r= random.uniform(outer_r / 3, outer_r - 0.2)
 
@@ -324,13 +398,13 @@ def face_pentagon(ref_pnts):
     dir_l = dir_l / np.linalg.norm(dir_l)
     dir_r = dir_r / np.linalg.norm(dir_r)
     
-    pt0 = ref_pnts[1] +  dir_l * np.dot(offset1 * edge_dir)
+    pt0 = ref_pnts[1] +  dir_l * np.dot(offset1 * edge_dir, dir_l)
     pt1 = ref_pnts[1]
     pt2 = ref_pnts[2]
-    pt3 = ref_pnts[2] + dir_r * np.dot(offset1 * edge_dir)
+    pt3 = ref_pnts[2] + dir_r * np.dot(offset1 * edge_dir, dir_r)
     pt4 = (pt1 + pt2) / 2 + edge_dir * offset2
 
-    return face_polygon([pt0, pt1, pt2, pt3, pt4])
+    return occ_utils.face_polygon([pt0, pt1, pt2, pt3, pt4])
     
     
 def face_quad(ref_pnts):
@@ -358,12 +432,12 @@ def face_quad(ref_pnts):
     dir_l = dir_l / np.linalg.norm(dir_l)
     dir_r = dir_r / np.linalg.norm(dir_r)
     
-    pt0 = ref_pnts[1] +  dir_l * np.dot(offset1 * edge_dir)
+    pt0 = ref_pnts[1] +  dir_l * np.dot(offset1 * edge_dir, dir_l)
     pt1 = ref_pnts[1]
     pt2 = ref_pnts[2]
-    pt3 = ref_pnts[2] + dir_r * np.dot(offset2 * edge_dir)
+    pt3 = ref_pnts[2] + dir_r * np.dot(offset2 * edge_dir, dir_r)
 
-    return face_polygon([pt0, pt1, pt2, pt3])
+    return occ_utils.face_polygon([pt0, pt1, pt2, pt3])
 
     
 def face_rectangle(ref_pnts):
@@ -392,14 +466,14 @@ def face_rectangle(ref_pnts):
     pt3 = pt2 + rect_h * dir_h
     pt4 = pt1 + rect_h * dir_h
     
-    return face_polygon([pt1, pt2, pt3, pt4])
+    return occ_utils.face_polygon([pt1, pt2, pt3, pt4])
     
     
 def face_rect_1(ref_pnts):
     edge_dir = ref_pnts[2] - ref_pnts[1]
     width = np.linalg.norm(edge_dir)
     edge_dir = edge_dir / width
-    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1]) - 1.0
+    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1])
     if width < 1.0 or height < 1.0:
         return None
     
@@ -415,7 +489,7 @@ def face_rect_1(ref_pnts):
     pnt3 = pnt2 + edge_normal * rect_h
     pnt4 = pnt1 + edge_normal * rect_h
 
-    return face_polygon([pnt1, pnt2, pnt3, pnt4])
+    return occ_utils.face_polygon([pnt1, pnt2, pnt3, pnt4])
 
     
 def face_rect_2(ref_pnts):
@@ -426,29 +500,29 @@ def face_rect_2(ref_pnts):
         print(ref_pnts)
         return None
 
-    ratio0 = random.uniform(0.5 / np.linalg.norm(vec0), 0.5)
-    ratio2 = random.uniform(0.5 / np.linalg.norm(vec2), 0.5)
+    ratio0 = random.uniform(0.5 / np.linalg.norm(vec0), 1.0)
+    ratio2 = random.uniform(0.5 / np.linalg.norm(vec2), 1.0)
 
     pt0 = ref_pnts[1] + vec0 * ratio0
     pt1 = ref_pnts[1]
     pt2 = ref_pnts[1] + vec2 * ratio2
     pt3 = ref_pnts[1] + vec0 * ratio0 + vec2 * ratio2        
 
-    return face_polygon([pt0, pt1, pt2, pt3])
+    return occ_utils.face_polygon([pt0, pt1, pt2, pt3])
 
     
 def face_rect_3(ref_pnts):
     vec1 = ref_pnts[0] - ref_pnts[1]
     vec2 = ref_pnts[3] - ref_pnts[2]
 
-    ratio = random.uniform(0.5 / np.linalg.norm(vec1), 0.5)
+    ratio = random.uniform(0.5 / np.linalg.norm(vec1), 1.0)
 
     pt0 = ref_pnts[1] + vec1 * ratio
     pt1 = ref_pnts[1]
     pt2 = ref_pnts[2]
     pt3 = ref_pnts[2] + vec2 * ratio
 
-    return face_polygon([pt0, pt1, pt2, pt3])
+    return occ_utils.face_polygon([pt0, pt1, pt2, pt3])
 
     
 def face_triangle(ref_pnts):
@@ -466,15 +540,15 @@ def face_triangle(ref_pnts):
     
     dir_w = dir_w / width
     dir_h = dir_h / height
-    normal = np.cross(dir_w, dir_h)
+    normal = occ_utils.as_occ(np.cross(dir_w, dir_h), gp_Dir)
     
-    radius = random.uniform(1.0, min(width, height))
+    radius = random.uniform(1.0, min(width / 2, height / 2))
     
     offset_w = random.uniform(radius, width - radius)
     offset_h = random.uniform(radius, height - radius)
-    center = ref_pnts[0] + dir_w * offset_w + dir_h * offset_h
+    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
 
-    circ = gp_Circ(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), normal), radius)
+    circ = Geom_Circle(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), normal), radius)
     
     ang1 = random.uniform(0.0, 2 * math.pi / 3)
     pt1 = occ_utils.as_list(circ.Value(ang1))
@@ -489,14 +563,14 @@ def face_triangle(ref_pnts):
         ang3 = ang3 - 2 * math.pi
     pt3 = occ_utils.as_list(circ.Value(ang3))
 
-    return face_polygon([pt1, pt2, pt3])
+    return occ_utils.face_polygon([pt1, pt2, pt3])
 
     
 def face_triangle_1(ref_pnts):
     edge_dir = ref_pnts[2] - ref_pnts[1]
     width = np.linalg.norm(edge_dir)
     edge_dir = edge_dir / width
-    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1]) - 1.0
+    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1])
     if width < 1.0 or height < 1.0:
         return None
     
@@ -511,7 +585,7 @@ def face_triangle_1(ref_pnts):
     edge_normal = edge_normal / np.linalg.norm(edge_normal)
     pnt3 = pnt1 + edge_dir * tri_w / 2 + edge_normal * tri_h
 
-    return face_polygon([pnt1, pnt2, pnt3])
+    return occ_utils.face_polygon([pnt1, pnt2, pnt3])
 
     
 def face_triangle_2(ref_pnts):
@@ -522,291 +596,104 @@ def face_triangle_2(ref_pnts):
         print(ref_pnts)
         return None
 
-    ratio0 = random.uniform(0.5 / np.linalg.norm(vec0), 0.5)
-    ratio2 = random.uniform(0.5 / np.linalg.norm(vec2), 0.5)
+    ratio0 = random.uniform(0.5 / np.linalg.norm(vec0), 1.0)
+    ratio2 = random.uniform(0.5 / np.linalg.norm(vec2), 1.0)
 
-    pt0 = occ_utils.as_occ(ref_pnts[1] + vec0 * ratio0, gp_Pnt)
-    pt1 = occ_utils.as_occ(ref_pnts[1], gp_Pnt)
-    pt2 = occ_utils.as_occ(ref_pnts[1] + vec2 * ratio2, gp_Pnt)       
+    pt0 = ref_pnts[1] + vec0 * ratio0
+    pt1 = ref_pnts[1]
+    pt2 = ref_pnts[1] + vec2 * ratio2       
 
-    return face_polygon([pt0, pt1, pt2])
+    return occ_utils.face_polygon([pt0, pt1, pt2])
 
           
 #==============================================================================
 # sketch bound sampler    
 #==============================================================================
-
-def bound_inner(f_list):
-    
-    return None
-    
-def bound_slot():
-    return None
-    
-def bound_1(f_list):
-    bounds = []
-    for face in f_list:
-        pts, triangles, vt_map, et_map = triangulation_from_face(face)        
-        segs = []
-        for et in et_map:
-            if len(et_map[et]) == 1:
-                segs.append([pts[et[0]], pts[et[1]]])              
-        pts = np.asarray(pts)
-        normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))
-        edges = occ_utils.list_edge(face)
-        for edge in edges:
-            if occ_utils.type_edge(edge) != 'line':
-                continue
-            edge_util = OCCUtils.edge.Edge(edge)
-            if edge_util.length() < 3.0:
-                continue
-            
-            pnt1 = np.array(occ_utils.as_list(topexp.FirstVertex(edge, True)))
-            pnt2 = np.array(occ_utils.as_list(topexp.LastVertex(edge, True)))
-                            
-            edge_dir = pnt2 - pnt1
-            edge_len = np.linalg.norm(edge_dir)
-            
-            edge_dir = edge_dir / edge_len
-            pnt1 = pnt1 + edge_dir * 0.5
-            pnt2 = pnt2 - edge_dir * 0.5
-            edge_len -= 1.0
-                        
-            edge_normal = np.cross(normal, edge_dir)
-            edge_normal = edge_normal / np.linalg.norm(edge_normal)
-            sample_pnts = [pnt1 + t * edge_dir for t in [0.0, edge_len * 0.3, edge_len * 0.6]]
-            for pnt in sample_pnts:
-                intersects = geom_utils.ray_segment_set_intersect(pnt, edge_normal, segs)                
-                intersects.sort()
-                intersects = intersects[1:]
-                
-                if len(intersects) == 0:
-                    continue
-                 
-                edge_len = np.linalg.norm(pnt2 - pnt)
-                bound = geom_utils.search_rect_inside_bound_2(pnt, edge_normal * intersects[0], edge_dir * edge_len, pts)
-                if bound is not None:                    
-                    bounds.append(bound)       
-    return bounds
-
-
-def bound_2(f_list):
-    bounds = []
-    for face in f_list:
-        pts, triangles, vt_map, et_map = triangulation_from_face(face)
-        pts = np.asarray(pts)
-        normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))
-        f_topo = OCCUtils.Topology.Topo(face)
-        verts = [vert for vert in f_topo.vertices()]
-        for vert in verts:
-            edges = occ_utils.edges_at_vertex(vert, face)
-            v_list = []
-            for edge in edges:
-                if occ_utils.type_edge(edge) == 'line':
-                    v_topo = OCCUtils.Topology.Topo(edge)
-                    for ve in v_topo.vertices():
-                        if not vert.IsSame(ve):
-                            v_list.append(ve)
-            if len(v_list) < 2:                
-                continue
-            
-            pnt1 = np.array(occ_utils.as_list(vert))
-            pnt0 = np.array(occ_utils.as_list(v_list[0]))
-            pnt2 = np.array(occ_utils.as_list(v_list[1]))
-            
-            if np.dot(np.cross(pnt1 - pnt0, pnt2 - pnt1 ), normal) < 0:
-                pnt = pnt0
-                pnt0 = pnt2
-                pnt2 = pnt                
-                   
-            vec0 = pnt0 - pnt1
-            vec2 = pnt2 - pnt1
-            if not geom_utils.point_in_polygon(pnt0, np.array([pnt1, pnt2]), False, normal):
-                print('concave vertex')
-                continue
-                   
-            bounds.append(geom_utils.search_rect_inside_bound_2(pnt1, vec0, vec2, pts))
-    return bounds
-
-def bound_3(f_list):
-    '''
-    output:
-        bounds: [np.array[[float,float,float]*4]]
-    '''
-    bounds = []
-
-    for face in f_list:
-        face_util = OCCUtils.face.Face(face)
-        edges = face_util.edges()
-        if len(edges) < 4:
+def face_filter(stock, label_map, num_edge):
+    result = []
+    for face in occ_utils.list_face(stock):
+        if label_map[face] != FEAT_NAMES.index('stock'):
             continue
-
-        pts, triangles, vt_map, et_map = triangulation_from_face(face)
-        pts = np.asarray(pts)
+        
+#        f_type = occ_utils.type_face(face)        
+#        if f_type != 'plane':
+#            continue
+        
+        # planar face
+        if num_edge == 0:
+            result.append(face)
+            continue
+        
+        face_util = OCCUtils.face.Face(face)
+        normal = occ_utils.as_list(occ_utils.normal_to_face_center(face))
         for wire in face_util.topo.wires():
             edges = [edge for edge in OCCUtils.face.WireExplorer(wire).ordered_edges()]
-            is_line = []
-            for an_edge in edges:
-                is_line.append(occ_utils.type_edge(an_edge) == 'line')
-
+            if len(edges) < 4:
+                continue
+            
+            good_edge = []            
+            for edge in edges:
+                if occ_utils.type_edge(edge) != 'line':
+                    good_edge.append(False)
+                    continue
+                
+                face_adjacent = occ_utils.face_adjacent(stock, face, edge)
+                assert face_adjacent is not None
+                if label_map[face_adjacent] != FEAT_NAMES.index('stock'):
+                    good_edge.append(False)
+                    continue
+                
+#                if occ_utils.type_face(face_adjacent) != 'plane':
+#                    good_edge.append(False)
+#                    continue
+                                  
+                adj_normal = occ_utils.as_list(occ_utils.normal_to_face_center(face_adjacent))
+                pnt1 = np.array(occ_utils.as_list(topexp.FirstVertex(edge, True)))
+                pnt2 = np.array(occ_utils.as_list(topexp.LastVertex(edge, True)))
+                edge_dir = pnt2 - pnt1
+                if np.dot(np.cross(normal, adj_normal), edge_dir) < 1e-6:
+                    good_edge.append(False)
+                    continue
+                
+                good_edge.append(True)
+                
             for i in range(len(edges)):
-                if not is_line[i]:
-                    continue
                 j = (i + 1) % len(edges)
-                if not is_line[j]:
-                    continue
                 k = (i + 2) % len(edges)
-                if not is_line[k]:
+                               
+                if not good_edge[i]:
                     continue
+                
+                if num_edge == 1: 
+                    result.append([face, edge])
+                    continue
+                
+                if not good_edge[j]:
+                    continue
+                
+                pnt = np.array(occ_utils.as_list(topexp.FirstVertex(edges[i], True)))
+                pntj = np.array(occ_utils.as_list(topexp.FirstVertex(edges[j], True)))
+                pntk = np.array(occ_utils.as_list(topexp.FirstVertex(edges[k], True)))
+                if not geom_utils.point_in_polygon(pnt, np.array([pntj, pntk]), False, normal):
+                    continue
+                
+                if num_edge == 2:                       
+                    result.append([face, edges[i], edges[j]])
+                    continue
+                
+                if not good_edge[k]:
+                    continue
+                
+                pnt = np.array(occ_utils.as_list(topexp.LastVertex(edges[k], True)))
+                if not geom_utils.point_in_polygon(pnt, np.array([pntj, pntk]), False, normal):
+                    continue
+                
+                if num_edge == 3:
+                    result.append([face, edges[i], edges[j], edges[k]])
 
-                eei = OCCUtils.edge.Edge(edges[i])
-                eek = OCCUtils.edge.Edge(edges[k])
-                vert1 = eei.common_vertex(edges[j])
-                verts = [eei.first_vertex(), eei.last_vertex()]
-                verts.remove(vert1)
-                vert0 = verts[0]
-                vert2 = eek.common_vertex(edges[j])
-                verts = [eek.first_vertex(), eek.last_vertex()]
-                verts.remove(vert2)
-                vert3 = verts[0]
-                verts = [vert0, vert1, vert2, vert3]
-                verts = np.asarray([occ_utils.as_list(vert) for vert in verts])
+    return result
 
-                vec1 = verts[0] - verts[1]
-                vec2 = verts[3] - verts[2]
-
-                bounds.append(geom_utils.search_rect_inside_bound_3(verts[1], verts[2], vec1, vec2, pts))
-
-    return bounds
-
-FEAT_BOUND_SAMPLER = {'Oring': bound_inner, 'through_hole': bound_inner,
-                      'blind_hole': bound_inner, 'triangular_passage': bound_inner,
-                      'rectangular_passage': bound_inner, 'circular_through_slot': bound_slot,
-                      'triangular_through_slot': bound_slot, 'rectangular_through_slot': bound_slot,
-                      'rectangular_blind_slot': bound_slot, 'triangular_pocket': bound_inner,
-                      'rectangular_pocket': bound_inner, 'circular_end_pocket': bound_inner,
-                      'triangular_blind_step': bound_2, 'circular_blind_step': bound_2,
-                      'rectangular_blind_step': bound_2, 'rectangular_through_step': bound_3,
-                      '2sides_through_step': bound_3, 'slanted_through_step': bound_3,
-                      'v_circular_end_blind_slot': bound_1, 'h_circular_end_blind_slot': bound_1,
-                      '6sides_passage': bound_inner, '6sides_pocket': bound_inner}
-
-SKETCH_GENERATOR = {'Oring': face_oring, 'through_hole': face_circle,
-                 'blind_hole': face_circle, 'triangular_passage': face_triangle,
-                 'rectangular_passage': face_rectangle, 'circular_through_slot': face_circle_1,
-                 'triangular_through_slot': face_triangle_1, 'rectangular_through_slot': face_rect_1,
-                 'rectangular_blind_slot': face_rect_1, 'triangular_pocket': face_triangle,
-                 'rectangular_pocket': face_rectangle, 'circular_end_pocket': face_circular_end_rect,
-                 'triangular_blind_step': face_triangle_2, 'circular_blind_step': face_circle_2,
-                 'rectangular_blind_step': face_rect_2, 'rectangular_through_step': face_rect_3,
-                 '2sides_through_step': face_pentagon, 'slanted_through_step': face_quad,
-                 'v_circular_end_blind_slot': face_open_circular_end_rect_v, 'h_circular_end_blind_slot': face_open_circular_end_rect_h,
-                 '6sides_passage': face_hexagon, '6sides_pocket': face_hexagon}
-                 
-FEAT_NAMES = ['Oring', 'through_hole', 'blind_hole', 'triangular_passage',
-              'triangular_pocket', 'rectangular_passage', 'rectangular_pocket',
-              '6sides_passage', '6sides_pocket', 'circular_end_pocket',         #10
-              'triangular_through_slot', 'rectangular_through_slot',
-              'circular_through_slot', 'rectangular_blind_slot', 
-              'v_circular_end_blind_slot', 'h_circular_end_blind_slot',         #6
-              'triangular_blind_step', 'circular_blind_step', 'rectangular_blind_step', #3
-              'rectangular_through_step', '2sides_through_step', 'slanted_through_step', #3
-              'chamfer', 'round', 'stock']
-
-def apply_feature(old_shape, old_labels, feat_type, feat_face, depth):
-    direction = occ_utils.normal_to_face_center(feat_face)
-    direction.Reverse()
-
-    feature_maker = BRepFeat_MakePrism()
-    feature_maker.Init(old_shape, feat_face, TopoDS_Face(), direction, False, False)
-    feature_maker.Build()
-
-    feature_maker.Perform(depth)
-    shape = feature_maker.Shape()
-
-    fmap = shape_factory.map_face_before_and_after_feat(old_shape, feature_maker)
-    new_labels = shape_factory.map_from_shape_and_name(fmap, old_labels, shape, FEAT_NAMES.index(feat_type))
-    return shape, new_labels
-
-
-
-
-SKETCH_INSIDE_FACE = ['Oring', 'through_hole', 'blind_hole', 'triangular_passage',
-                      'triangular_pocket', 'rectangular_passage', 'rectangular_pocket',
-                      '6sides_passage', '6sides_pocket', 'circular_end_pocket']
-
-SKETCH_ON_EDGE = ['triangular_through_slot', 'rectangular_through_slot',
-                  'rectangular_blind_slot', 'circular_through_slot',
-                  'v_circular_end_blind_slot', 'h_circular_end_blind_slot']
-
-SKETCH_ON_VERTEX = ['triangular_blind_step', 'circular_blind_step', 'rectangular_blind_step']
-
-SKETCH_ON_EDGES = ['rectangular_through_step', '2sides_through_step', 'slanted_through_step']
-
-
-
-def points_filter_by_dist(sample_points, face):
-    dists = []
-    nearest_pnts = []
-
-    edges = occ_utils.list_edge(face)
-
-    for apnt in sample_points:
-        dist, pnt = occ_utils.dist_point_to_edges(apnt, edges)
-        dists.append(dist)
-        nearest_pnts.append(pnt)
-
-    nearest_pnts = np.asarray(nearest_pnts)
-    dists = np.asarray(dists)
-    idx = dists > 1.5
-    sample_points = sample_points[idx]
-    dists = dists[idx]
-    nearest_pnts = nearest_pnts[idx]
-
-    return sample_points, dists, nearest_pnts
-
-def sample_point_param(sample_points, dists, nearest_pnts, ray_dir, tri_list):
-    while len(sample_points) > 0:
-        pnt_idx = random.choice(range(len(sample_points)))
-
-    depths = []
-    for pnt in sample_points:
-        depth = geom_utils.ray_triangle_set_intersect(pnt, ray_dir, tri_list)
-        depths.append(depth)
-
-    depths = np.asarray(depths)
-    idx = depths > 2.0
-    sample_points = sample_points[idx]
-    dists = dists[idx]
-    nearest_pnts = nearest_pnts[idx]
-    depths = depths[idx]
-    idx = random.choice(range(len(sample_points)))
-    min_depth = depths[idx]
-    max_depth = 10.0
-    if feat_type in ['Oring', 'blind_hole', 'triangular_pocket', 'rectangular_pocket',
-                     '6sides_pocket', 'circular_end_pocket', 'rectangular_blind_slot',
-                     'triangular_blind_step', 'circular_blind_step', 'rectangular_blind_step',
-                     'rectangular_through_step', '2sides_through_step', 'slanted_through_step',
-                     'v_circular_end_blind_slot', 'h_circular_end_blind_slot']:
-        depth = random.uniform(1.0, min_depth - 1.0)
-    else:
-        depth = max_depth
-
-    return pnt_idx, radius, depth
-
-
-
-def filter_points_by_param(sample_points, face, tri_list, sketch_extrema, depth):
-    # condition 3: be distant from opposit faces
-    normal = occ_utils.normal_to_face_center(face)
-    ray_dir = (-np.asarray(occ_utils.list_from_occ(normal))).tolist()
-    idx, depth = sample_point_param(sample_points, dists, nearest_pnts, ray_dir, tri_list)
-    if idx == None:
-        candidate_faces.remove(face)
-
-    return None
-
-
+    
 def sample_points_inside_face(face):
     tri_pnts, triangles, _, et_map = triangulation_from_face(face)
     sample_points = []
@@ -826,92 +713,221 @@ def sample_points_inside_face(face):
 
     return sample_points
 
-def sample_points_on_edge(edge):
-    sample_pnts = []
-    edge_util = OCCUtils.edge.Edge(edge)
-    n_pnts = int(edge_util.length() / 1.0) + 1
-    if n_pnts < 3:
-        return sample_pnts
+    
+def bound_inner(shape, label_map):
+    fe_list = face_filter(shape, label_map, 0)
+    bounds = []
+    for face in fe_list:
+        normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))
+        sample_pnts = np.array(sample_points_inside_face(face))
+        edges = occ_utils.list_edge(face)    
+        for apnt in sample_pnts:
+            dist, pnt = occ_utils.dist_point_to_edges(apnt, edges)        
+            if dist >= 2.0:
+                dir_w = apnt - np.array(pnt)
+                dir_w = dir_w / np.linalg.norm(dir_w)
+                dir_h = np.cross(dir_w, normal)
+                half_len = dist * math.sqrt(2) / 2
+                pnt0 = apnt - dir_w * half_len - dir_h * half_len 
+                pnt1 = apnt - dir_w * half_len + dir_h * half_len
+                pnt2 = apnt + dir_w * half_len + dir_h * half_len
+                pnt3 = apnt + dir_w * half_len - dir_h * half_len
+                bounds.append([pnt0, pnt1, pnt2, pnt3, -normal])
+                
+    return bounds
+   
+    
+def bound_1(shape, label_map):
+    fe_list = face_filter(shape, label_map, 1)
+    
+    bounds = []
+    for item in fe_list:
+        face = item[0]
+        edge = item[1]
+        pts, triangles, vt_map, et_map = triangulation_from_face(face)        
+        segs = []
+        for et in et_map:
+            if len(et_map[et]) == 1:
+                segs.append([pts[et[0]], pts[et[1]]])              
+        pts = np.asarray(pts)
+        normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))
 
-    pnt_list = edge_util.divide_by_number_of_points(n_pnts)
-    if pnt_list == None:
-        return sample_pnts
-
-    pnt_list.sort()
-    for i in range(1, len(pnt_list) - 1):
-        sample_pnts.append(occ_utils.list_from_occ(pnt))
-
-    return sample_pnts
-
-def sample_points_from_face(face, feat_type):
-    sample_points = []
-    pin_edges = []
-    if feat_type in SKETCH_INSIDE_FACE:
-        # sketch inside face
-        sample_points = sample_points_inside_face(face)
-    elif feat_type in SKETCH_ON_EDGE:
-        # sketch on one edge
-        edges = occ_utils.list_edge(face)
-        for edge in edges:
-            if occ_utils.is_line(edge):
-                edge_pnts = sample_points_on_edge(edge)
-                sample_points += edge_pnts
-                pin_edges += [edge] * len(edge_pnts)
-    elif feat_type in SKETCH_ON_VERTEX:
-        # sketch on one vertex
-        sample_points = []
-    else:
-        sample_points = []
-
-    sample_points, dists, nearest_pnts = points_filter_by_dist(sample_points, face)
-    return np.asarray(sample_points), dists, nearest_pnts
-
-
-def search_sketch_face(label_map, feat_type, sketch_extrema, depth):
-    candidate_faces = label_map.keys()
-    tri_list = triangles_from_faces()
-
-    while len(candidate_faces) > 0:
-        face = random.choice(candidate_faces)
-        # only create sketches on some feature faces
-        if label_map[face] not in [FEAT_NAMES.index('stock')]:
-            candidate_faces.remove(face)
+        edge_util = OCCUtils.edge.Edge(edge)
+        if edge_util.length() < 3.0:
             continue
+                
+        pnt1 = np.array(occ_utils.as_list(topexp.FirstVertex(edge, True)))
+        pnt2 = np.array(occ_utils.as_list(topexp.LastVertex(edge, True)))
+                        
+        edge_dir = pnt2 - pnt1
+        edge_len = np.linalg.norm(edge_dir)
+        
+        edge_dir = edge_dir / edge_len
+        pnt1 = pnt1 + edge_dir * 0.5
+        pnt2 = pnt2 - edge_dir * 0.5
+        edge_len -= 1.0
+                    
+        edge_normal = np.cross(normal, edge_dir)
+        edge_normal = edge_normal / np.linalg.norm(edge_normal)
+        sample_pnts = [pnt1 + t * edge_dir for t in [0.0, edge_len * 0.3, edge_len * 0.6]]
+        for pnt in sample_pnts:
+            intersects = geom_utils.ray_segment_set_intersect(pnt, edge_normal, segs)                
+            intersects.sort()
+            intersects = intersects[1:]
+            
+            if len(intersects) == 0:
+                continue
+             
+            edge_len = np.linalg.norm(pnt2 - pnt)
+            bound = geom_utils.search_rect_inside_bound_2(pnt, edge_normal * intersects[0], edge_dir * edge_len, pts)
+            if bound is not None:                    
+                bound = np.append(bound, [-normal], axis=0)
+                bounds.append(bound) 
+                
+    return bounds
 
-        # only consider planar faces
-        if not occ_utils.is_planar(face):
-            candidate_faces.remove(face)
-            continue
 
-        # sample face
-        sample_points = sample_points_from_face(face, feat_type)
+def bound_2(shape, label_map):
+    fe_list = face_filter(shape, label_map, 2)
+    bounds = []
+    for item in fe_list:
+        face = item[0]
+        edge1 = item[1]
+        edge2 = item[2]
 
-        ref_points = filter_points_by_param(sample_points, face, tri_list, sketch_extrema, depth)
-        if ref_points == None:
-            candidate_faces.remove(face)
-            continue
+        pts, triangles, vt_map, et_map = triangulation_from_face(face)
+        pts = np.asarray(pts)
+                
+        pnt0 = np.array(occ_utils.as_list(topexp.FirstVertex(edge1, True)))
+        pnt1 = np.array(occ_utils.as_list(topexp.FirstVertex(edge2, True)))        
+        pnt2 = np.array(occ_utils.as_list(topexp.LastVertex(edge2, True)))        
+           
+        vec0 = pnt0 - pnt1
+        vec2 = pnt2 - pnt1
+        
+        bound = geom_utils.search_rect_inside_bound_2(pnt1, vec0, vec2, pts)
+        if bound is not None:
+            normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))
+            bound = np.append(bound, [-normal], axis=0)
+            bounds.append(bound)
+    
+    return bounds
 
-        normal = occ_utils.normal_to_face_center(face)
-        return ref_points, normal
+    
+def bound_3(shape, label_map):
+    '''
+    output:
+        bounds: [np.array[[float,float,float]*4]]
+    '''
+    bounds = []
+    fe_list = face_filter(shape, label_map, 3)
+    
+    for item in fe_list:
+        face = item[0]
+        edge1 = item[1]
+        edge2 = item[2]
+        edge3 = item[3]
 
-    return None, None
+        pts, triangles, vt_map, et_map = triangulation_from_face(face)
+        pts = np.asarray(pts)
 
-BLIND_FEAT = ['Oring', 'blind_hole', 'triangular_pocket', 'rectangular_pocket',
-              '6sides_pocket', 'circular_end_pocket', 'rectangular_blind_slot',
-              'triangular_blind_step', 'circular_blind_step', 'rectangular_blind_step',
-              'rectangular_through_step', '2sides_through_step', 'slanted_through_step',
-              'v_circular_end_blind_slot', 'h_circular_end_blind_slot']
+        pnt0 = np.array(occ_utils.as_list(topexp.FirstVertex(edge1, True)))
+        pnt1 = np.array(occ_utils.as_list(topexp.FirstVertex(edge2, True)))
+        pnt2 = np.array(occ_utils.as_list(topexp.FirstVertex(edge3, True)))
+        pnt3 = np.array(occ_utils.as_list(topexp.LastVertex(edge3, True)))
 
-def sample_feature_param(ref_extrema, ref_depth):
-    feat_type = random.choice(FEAT_NAMES[:9])
-    sketch_extrema = random.uniform(1.0, ref_extrema - 1.0)
+        vec1 = pnt0 - pnt1
+        vec2 = pnt3 - pnt2
+        bound = geom_utils.search_rect_inside_bound_3(pnt1, pnt2, vec1, vec2, pts)
+        if bound is not None:
+            normal = np.array(occ_utils.as_list(occ_utils.normal_to_face_center(face)))
+            bound = np.append(bound, [-normal], axis=0)            
+            bounds.append(bound)
 
-    if feat_type in BLIND_FEAT:
-        depth = random.uniform(1.0, ref_depth - 1.0)
-    else:
-        depth = ref_depth
+    return bounds
 
-    return feat_type, sketch_extrema, depth
+    
+#==============================================================================
+#     feature depth sampler
+#==============================================================================
+    
+    
+def depth_blind(bound, triangles):
+    points = geom_utils.points_inside_rect(bound[0], bound[1], bound[2], bound[3], 1.0)
+    depths = []
+    for pnt in points:
+        dpt = geom_utils.ray_triangle_set_intersect(pnt, bound[4], triangles)
+        if dpt > 0:
+            depths.append(dpt)
+            
+    depth = min(depths)
+    if depth < 2.0:
+        return float('-inf')
+        
+    return random.uniform(1.0, depth - 1.0)
+
+def depth_through(bound, triangles):
+    return 10.0
+    
+SKETCH_BOUND_SAMPLER = {'Oring': bound_inner, 'through_hole': bound_inner,
+                      'blind_hole': bound_inner, 'triangular_passage': bound_inner,
+                      'rectangular_passage': bound_inner, 'circular_through_slot': bound_1,
+                      'triangular_through_slot': bound_1, 'rectangular_through_slot': bound_1,
+                      'rectangular_blind_slot': bound_1, 'triangular_pocket': bound_inner,
+                      'rectangular_pocket': bound_inner, 'circular_end_pocket': bound_inner,
+                      'triangular_blind_step': bound_2, 'circular_blind_step': bound_2,
+                      'rectangular_blind_step': bound_2, 'rectangular_through_step': bound_3,
+                      '2sides_through_step': bound_3, 'slanted_through_step': bound_3,
+                      'v_circular_end_blind_slot': bound_1, 'h_circular_end_blind_slot': bound_1,
+                      '6sides_passage': bound_inner, '6sides_pocket': bound_inner}
+
+SKETCH_GENERATOR = {'Oring': face_oring, 'through_hole': face_circle,
+                 'blind_hole': face_circle, 'triangular_passage': face_triangle,
+                 'rectangular_passage': face_rectangle, 'circular_through_slot': face_circle_1,
+                 'triangular_through_slot': face_triangle_1, 'rectangular_through_slot': face_rect_1,
+                 'rectangular_blind_slot': face_rect_1, 'triangular_pocket': face_triangle,
+                 'rectangular_pocket': face_rectangle, 'circular_end_pocket': face_circular_end_rect,
+                 'triangular_blind_step': face_triangle_2, 'circular_blind_step': face_circle_2,
+                 'rectangular_blind_step': face_rect_2, 'rectangular_through_step': face_rect_3,
+                 '2sides_through_step': face_pentagon, 'slanted_through_step': face_quad,
+                 'v_circular_end_blind_slot': face_open_circular_end_rect_v, 'h_circular_end_blind_slot': face_open_circular_end_rect_h,
+                 '6sides_passage': face_hexagon, '6sides_pocket': face_hexagon}
+                 
+FEAT_DEPTH_SAMPLER = {'Oring': depth_blind, 'through_hole': depth_through,
+                      'blind_hole': depth_blind, 'triangular_passage': depth_through,
+                      'rectangular_passage': depth_through, 'circular_through_slot': depth_through,
+                      'triangular_through_slot': depth_through, 'rectangular_through_slot': depth_through,
+                      'rectangular_blind_slot': depth_blind, 'triangular_pocket': depth_blind,
+                      'rectangular_pocket': depth_blind, 'circular_end_pocket': depth_blind,
+                      'triangular_blind_step': depth_blind, 'circular_blind_step': depth_blind,
+                      'rectangular_blind_step': depth_blind, 'rectangular_through_step': depth_blind,
+                      '2sides_through_step': depth_blind, 'slanted_through_step': depth_blind,
+                      'v_circular_end_blind_slot': depth_blind, 'h_circular_end_blind_slot': depth_blind,
+                      '6sides_passage': depth_through, '6sides_pocket': depth_blind}
+                 
+FEAT_NAMES = ['Oring', 'through_hole', 'blind_hole', 'triangular_passage',
+              'triangular_pocket', 'rectangular_passage', 'rectangular_pocket',
+              '6sides_passage', '6sides_pocket', 'circular_end_pocket',         #10
+              'triangular_through_slot', 'rectangular_through_slot',
+              'circular_through_slot', 'rectangular_blind_slot', 
+              'v_circular_end_blind_slot', 'h_circular_end_blind_slot',         #6
+              'triangular_blind_step', 'circular_blind_step', 'rectangular_blind_step', #3
+              'rectangular_through_step', '2sides_through_step', 'slanted_through_step', #3
+              'chamfer', 'round', 'stock']
+
+              
+def apply_feature(old_shape, old_labels, feat_type, feat_face, depth_dir):
+    feature_maker = BRepFeat_MakePrism()
+    feature_maker.Init(old_shape, feat_face, TopoDS_Face(), occ_utils.as_occ(depth_dir, gp_Dir), False, False)
+    feature_maker.Build()
+
+    feature_maker.Perform(np.linalg.norm(depth_dir))
+    shape = feature_maker.Shape()
+
+    fmap = shape_factory.map_face_before_and_after_feat(old_shape, feature_maker)
+    new_labels = shape_factory.map_from_shape_and_name(fmap, old_labels, shape, FEAT_NAMES.index(feat_type))
+    return shape, new_labels
+
 
 def triangulate_shape(shape):
     linear_deflection = 0.1
@@ -920,16 +936,19 @@ def triangulate_shape(shape):
     mesh.Perform()
     assert mesh.IsDone()
 
-
-def face_filter(face_map, label_list, type_list):
-    result = []
-    for face in face_map:
-        f_label = face_map[face]
-        f_type = occ_utils.type_face(face)
-        if f_label in label_list and f_type in type_list:
-            result.append(face)
-
-    return result
+    
+def add_chamfer_round(stock, label_map):
+    fillet_maker = BRepFilletAPI_MakeFillet(stock)
+    edges = occ_utils.list_edge(stock)
+    # to do: select edge
+    
+    fillet_maker.Add(1.0, random.choice(edges))
+   
+    shape = fillet_maker.Shape()
+    fmap = shape_factory.map_face_before_and_after_feat(stock, fillet_maker)
+    label_map = shape_factory.map_from_shape_and_name(fmap, label_map, shape, FEAT_NAMES.index('round'))   
+    
+    return shape, label_map
 
     
 def shape_from_machining_feature():
@@ -937,17 +956,25 @@ def shape_from_machining_feature():
     label_map = shape_factory.map_from_name(stock, FEAT_NAMES.index('stock'))
     triangulate_shape(stock)
 
-    num_feats = random.randint(2, 2)
-    for i in range(num_feats):
+    num_feats = random.randint(3, 3)
+    bounds = []
+    feat_cnt = 0
+    while True:
         triangulate_shape(stock)
         # step 1: sample feature arameters [type, width, depth]
-        feat_type = random.choice(FEAT_NAMES[10:13])       
-        f_list = face_filter(label_map, [FEAT_NAMES.index('stock')], ['plane'])
-        bounds = FEAT_BOUND_SAMPLER[feat_type](f_list)
-        print(len(bounds), 'bounds')
+        feat_type = random.choice(FEAT_NAMES[:-3])
+        
+        bounds = SKETCH_BOUND_SAMPLER[feat_type](stock, label_map)
+        
         feat_face = None
+        faces = occ_utils.list_face(stock)
+        triangles = triangles_from_faces(faces)
         random.shuffle(bounds)
         for bound in bounds:
+            depth = FEAT_DEPTH_SAMPLER[feat_type](bound, triangles)
+            if depth < 0:
+                continue
+            
             # step 3: create feature face            
             feat_face = SKETCH_GENERATOR[feat_type](bound)
             if feat_face is not None:
@@ -956,9 +983,14 @@ def shape_from_machining_feature():
         # step 4: apply feature operation
         if feat_face is None:
             continue
-        depth = 10.0
-        print(i, feat_type)
-        stock, label_map = apply_feature(stock, label_map, feat_type, feat_face, depth)
+        
+        print(feat_cnt, feat_type)
+        feat_cnt += 1
+        stock, label_map = apply_feature(stock, label_map, feat_type, feat_face, bound[4] * depth)
+        if feat_cnt == num_feats:
+            break
+    
+    stock, label_map = add_chamfer_round(stock, label_map)
 
     return stock, label_map, bounds
 
@@ -969,27 +1001,27 @@ if __name__ == '__main__':
     OCC_DISPLAY.EraseAll()
 
     colors = []
-    rgb_list = np.array(np.meshgrid([0.3, 0.6, 0.9], [0.9, 0.3, 0.6], [0.6, 0.9, 0.3])).T.reshape(-1,3)
+    rgb_list = np.array(np.meshgrid([0.3, 0.6, 0.9], [0.3, 0.6, 0.9], [0.9, 0.6, 0.3])).T.reshape(-1,3)
     for rgb in rgb_list:
         colors.append(rgb_color(rgb[0], rgb[1], rgb[2]))
 
     random.seed()
     SHAPE, FMAP, bounds = shape_from_machining_feature()
-    for bound in bounds:
-        for i in range(4):
-            j = (i+1)%4
-            pnt1 = occ_utils.as_occ(bound[i], gp_Pnt)
-            pnt2 = occ_utils.as_occ(bound[j], gp_Pnt)
-            if np.linalg.norm(bound[i] - bound[j]) < 0.000001:
-                print('bound edge has zero length')
-                continue
-            try:
-                seg_maker = GC_MakeSegment(pnt1, pnt2)
-                edge = BRepBuilderAPI_MakeEdge(seg_maker.Value()).Edge()
-                OCC_DISPLAY.DisplayShape(edge)
-            except RuntimeError as error:
-                print('main', error)
-                print(bound[i], bound[j])
+#    for bound in bounds:
+#        for i in range(4):
+#            j = (i+1)%4
+#            pnt1 = occ_utils.as_occ(bound[i], gp_Pnt)
+#            pnt2 = occ_utils.as_occ(bound[j], gp_Pnt)
+#            if np.linalg.norm(bound[i] - bound[j]) < 0.000001:
+#                print('bound edge has zero length')
+#                continue
+#            try:
+#                seg_maker = GC_MakeSegment(pnt1, pnt2)
+#                edge = BRepBuilderAPI_MakeEdge(seg_maker.Value()).Edge()
+#                OCC_DISPLAY.DisplayShape(edge)
+#            except RuntimeError as error:
+#                print('main', error)
+#                print(bound[i], bound[j])
 
     AIS = AIS_ColoredShape(SHAPE)
     for a_face in FMAP:
