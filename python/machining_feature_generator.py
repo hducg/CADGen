@@ -859,8 +859,12 @@ def depth_blind(bound, triangles):
         dpt = geom_utils.ray_triangle_set_intersect(pnt, bound[4], triangles)
         if dpt > 0:
             depths.append(dpt)
-            
-    depth = min(depths)
+    
+    if len(depths) > 0:
+        depth = min(depths)
+    else:
+        depth = 10.0
+    
     if depth < 2.0:
         return float('-inf')
         
@@ -956,14 +960,14 @@ def shape_from_machining_feature():
     label_map = shape_factory.map_from_name(stock, FEAT_NAMES.index('stock'))
     triangulate_shape(stock)
 
-    num_feats = random.randint(3, 3)
+    num_feats = random.randint(3, 5)
     bounds = []
     feat_cnt = 0
     while True:
         triangulate_shape(stock)
         # step 1: sample feature arameters [type, width, depth]
         feat_type = random.choice(FEAT_NAMES[:-3])
-        
+        print(feat_type)
         bounds = SKETCH_BOUND_SAMPLER[feat_type](stock, label_map)
         
         feat_face = None
@@ -990,7 +994,7 @@ def shape_from_machining_feature():
         if feat_cnt == num_feats:
             break
     
-    stock, label_map = add_chamfer_round(stock, label_map)
+#    stock, label_map = add_chamfer_round(stock, label_map)
 
     return stock, label_map, bounds
 
@@ -1001,7 +1005,7 @@ if __name__ == '__main__':
     OCC_DISPLAY.EraseAll()
 
     colors = []
-    rgb_list = np.array(np.meshgrid([0.3, 0.6, 0.9], [0.3, 0.6, 0.9], [0.9, 0.6, 0.3])).T.reshape(-1,3)
+    rgb_list = np.array(np.meshgrid([0.9, 0.6, 0.3], [0.9, 0.6, 0.3], [0.9, 0.6, 0.3])).T.reshape(-1,3)
     for rgb in rgb_list:
         colors.append(rgb_color(rgb[0], rgb[1], rgb[2]))
 
