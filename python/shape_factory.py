@@ -379,8 +379,9 @@ def map_from_name(shape, name):
 
 
 def same_shape_in_list(the_shape, slist):
+    the_hash = the_shape.__hash__()
     for a_shape in slist:
-        if the_shape.IsSame(a_shape):
+        if the_hash == a_shape.__hash__():#the_shape.IsSame(a_shape):
             return a_shape
     return None
 

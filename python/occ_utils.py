@@ -10,34 +10,34 @@ import sys
 import math
 import numpy as np
 
-from OCC.TopExp import TopExp_Explorer, topexp, topexp_MapShapesAndAncestors
-from OCC.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE, TopAbs_VERTEX
-from OCC.TopoDS import topods, TopoDS_Shape, TopoDS_Vertex, TopoDS_Edge, TopoDS_Face
-from OCC.Bnd import Bnd_Box
-from OCC.BRepMesh import BRepMesh_IncrementalMesh
-from OCC.BRepBndLib import brepbndlib_Add
-from OCC.BRepTools import breptools_UVBounds
-from OCC.IntTools import IntTools_FClass2d
-from OCC.gp import gp_Pnt2d, gp_Pnt, gp_Dir, gp_Vec
-from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
-from OCC.BRep import BRep_Tool_Surface, BRep_Tool, BRep_Tool_Curve
-from OCC.GeomLProp import GeomLProp_SLProps
-from OCC.TDocStd import Handle_TDocStd_Document
-from OCC.XCAFApp import XCAFApp_Application
-from OCC.TCollection import TCollection_ExtendedString
-from OCC.XCAFDoc import XCAFDoc_DocumentTool_ShapeTool, XCAFDoc_DocumentTool_ColorTool
-from OCC.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
-from OCC.TCollection import TCollection_HAsciiString
-from OCC.STEPConstruct import stepconstruct_FindEntity
-from OCC.StepRepr import Handle_StepRepr_RepresentationItem
-from OCC.TopLoc import TopLoc_Location
-from OCC.StlAPI import StlAPI_Reader
-from OCC.GeomLib import GeomLib_IsPlanarSurface
-from OCC.BRepExtrema import BRepExtrema_ExtPC, BRepExtrema_DistShapeShape
-from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeVertex, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeFace
-from OCC.BRepPrimAPI import BRepPrimAPI_MakeBox
-from OCC.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
-from OCC.TopOpeBRepBuild import TopOpeBRepBuild_Tools
+from OCC.Core.TopExp import TopExp_Explorer, topexp, topexp_MapShapesAndAncestors
+from OCC.Core.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE, TopAbs_VERTEX
+from OCC.Core.TopoDS import topods, TopoDS_Shape, TopoDS_Vertex, TopoDS_Edge, TopoDS_Face
+from OCC.Core.Bnd import Bnd_Box
+from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
+from OCC.Core.BRepBndLib import brepbndlib_Add
+from OCC.Core.BRepTools import breptools_UVBounds
+from OCC.Core.IntTools import IntTools_FClass2d
+from OCC.Core.gp import gp_Pnt2d, gp_Pnt, gp_Dir, gp_Vec
+from OCC.Core.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
+from OCC.Core.BRep import BRep_Tool_Surface, BRep_Tool, BRep_Tool_Curve
+from OCC.Core.GeomLProp import GeomLProp_SLProps
+from OCC.Core.TDocStd import Handle_TDocStd_Document
+from OCC.Core.XCAFApp import XCAFApp_Application
+from OCC.Core.TCollection import TCollection_ExtendedString
+from OCC.Core.XCAFDoc import XCAFDoc_DocumentTool_ShapeTool, XCAFDoc_DocumentTool_ColorTool
+from OCC.Core.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
+from OCC.Core.TCollection import TCollection_HAsciiString
+from OCC.Core.STEPConstruct import stepconstruct_FindEntity
+from OCC.Core.StepRepr import Handle_StepRepr_RepresentationItem
+from OCC.Core.TopLoc import TopLoc_Location
+from OCC.Core.StlAPI import StlAPI_Reader
+from OCC.Core.GeomLib import GeomLib_IsPlanarSurface
+from OCC.Core.BRepExtrema import BRepExtrema_ExtPC, BRepExtrema_DistShapeShape
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeVertex, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeFace
+from OCC.Core.BRepPrimAPI import BRepPrimAPI_MakeBox
+from OCC.Core.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
+from OCC.Core.TopOpeBRepBuild import TopOpeBRepBuild_Tools
 from OCC.Display import SimpleGui
 
 
