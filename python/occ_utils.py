@@ -205,17 +205,17 @@ def shape_with_fid_to_step(filename, shape, id_map):
     writer = STEPControl_Writer()
     writer.Transfer(shape, STEPControl_AsIs)
 
-    finderp = writer.WS().GetObject().TransferWriter().GetObject().FinderProcess()
+    finderp = writer.WS().TransferWriter().FinderProcess()
 
     fset = list_face(shape)
 
     loc = TopLoc_Location()
     for face in fset:
         item = stepconstruct_FindEntity(finderp, face, loc)
-        if item.IsNull():
+        if item is None:
             print(face)
             continue
-        item.GetObject().SetName(TCollection_HAsciiString(str(id_map[face])).GetHandle())
+        item.SetName(TCollection_HAsciiString(str(id_map[face])))
 
     writer.Write(filename)
 
@@ -237,7 +237,7 @@ def shape_with_fid_from_step(filename):
     reader.TransferRoots()
     shape = reader.OneShape()
 
-    treader = reader.WS().GetObject().TransferReader().GetObject()
+    treader = reader.WS().TransferReader().GetObject()
 
     id_map = {}
     fset = list_face(shape)
@@ -248,7 +248,7 @@ def shape_with_fid_from_step(filename):
             print(face)
             continue
         item = Handle_StepRepr_RepresentationItem.DownCast(item).GetObject()
-        name = item.Name().GetObject().ToCString()
+        name = item.Name().ToCString()
         if name:
             nameid = int(name)
             id_map[face] = nameid

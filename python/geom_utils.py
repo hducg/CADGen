@@ -68,8 +68,7 @@ def ray_triangle_set_intersect(ray_origin, ray_direction, tri_list):
 #    results = Pool().map(ray_triangle_intersect, ray_tri_list)
     results = np.asarray(results)
     results = results[results > 0]
-    if np.size(results) == 0:
-        print(ray_origin, ray_direction)
+    if np.size(results) == 0:        
         print('ray no intersect', ray_origin, ray_direction)
         return float('-inf')
         
@@ -249,7 +248,11 @@ def points_inside_rect(pnt0, pnt1, pnt2, pnt3, resolution = 0.5):
     width = np.linalg.norm(dir_w)
     height = np.linalg.norm(dir_h)
     num_w = int(width / resolution)
+    if num_w == 0:
+        num_w = 1
     num_h = int(height / resolution)
+    if num_h == 0:
+        num_h = 1
     
     delta_w = width / num_w
     delta_h = width / num_h

@@ -9,6 +9,9 @@ import sys
 import random
 import math
 import logging
+import os
+import pickle
+import glob
 
 import numpy as np
 
@@ -433,7 +436,7 @@ def triangulate_shape(shape):
     assert mesh.IsDone()
 
 
-def add_chamfer(stock, label_map):    
+def add_chamfer(stock, label_map):
     fillet_maker = BRepFilletAPI_MakeChamfer(stock)
     edges = occ_utils.list_edge(stock)
     # to do: select edge
@@ -443,16 +446,9 @@ def add_chamfer(stock, label_map):
     fillet_maker.Add(1.0, edge, face)
    
     shape = fillet_maker.Shape()
+
     fmap = shape_factory.map_face_before_and_after_feat(stock, fillet_maker)
     label_map = shape_factory.map_from_shape_and_name(fmap, label_map, shape, FEAT_NAMES.index('chamfer'))
-    
-    print(label_map.keys())
-    faces = occ_utils.list_face(shape)
-    for face in faces:
-        if face not in label_map:
-            print('face not in label map')
-            label_map[face] = 0
-            print(face, face.__hash__())
             
     return shape, label_map
 
@@ -465,12 +461,24 @@ def add_round(stock, label_map):
     if radius < 0.1:
         radius = 0.1
     if radius > 0.5:
-        radius = 0.5
-        
+        radius = 0.5    
+    
+    topo_exp = TopologyExplorer(stock)    
     for edge in edges:
-        fillet_maker.Add(radius, edge)
+        is_stock_edge = True
+        for face in topo_exp.faces_from_edge(edge):
+            if label_map[face] != FEAT_NAMES.index('stock'):
+                is_stock_edge = False
+        if is_stock_edge:
+            fillet_maker.Add(radius, edge)
    
-    shape = fillet_maker.Shape()
+    try:
+        shape = fillet_maker.Shape()
+    except RuntimeError as error:
+        print(error)
+        print('round radius', radius)    
+        return stock, label_map
+    
     fmap = shape_factory.map_face_before_and_after_feat(stock, fillet_maker)
     label_map = shape_factory.map_from_shape_and_name(fmap, label_map, shape, FEAT_NAMES.index('round'))   
     
@@ -487,80 +495,116 @@ def shape_from_machining_feature():
     print(num_feats)
     idx_split = [0, 10, -3]    
 
-#    for i in range(2):
-#        bounds = []
-#        feat_cnt = 0
-#        while True:
-#            triangulate_shape(stock)
-#            # step 1: sample feature arameters [type, width, depth]
-#            feat_type = random.choice(FEAT_NAMES[idx_split[i]:idx_split[i + 1]])            
-#            bounds = SKETCH_BOUND_SAMPLER[feat_type](stock, label_map)
-#            if len(bounds) < 1:
-#                break
-#            
-#            feat_face = None
-#            faces = occ_utils.list_face(stock)
-#            triangles = triangles_from_faces(faces)
-#            random.shuffle(bounds)
-#            for bound in bounds:
-#                depth = FEAT_DEPTH_SAMPLER[feat_type](bound, triangles)
-#                if depth < 0:
-#                    continue
-#                
-#                # step 3: create feature face            
-#                feat_face = SKETCH_GENERATOR[feat_type](bound)
-#                if feat_face is not None:
-#                    break
-#    
-#            # step 4: apply feature operation
-#            if feat_face is None:
-#                continue
-#            
-#            print(feat_cnt, feat_type)
-#            feat_cnt += 1
-#            stock, label_map = apply_feature(stock, label_map, feat_type, feat_face, bound[4] * depth)
-#            if feat_cnt == num_feats[i]:
-#                break
-#    
-#    stock, label_map = add_round(stock, label_map)
+    for i in range(2):
+        bounds = []
+        feat_cnt = 0
+        while True:
+            triangulate_shape(stock)
+            # step 1: sample feature arameters [type, width, depth]
+            feat_type = random.choice(FEAT_NAMES[idx_split[i]:idx_split[i + 1]])            
+            bounds = SKETCH_BOUND_SAMPLER[feat_type](stock, label_map)
+            if len(bounds) < 1:
+                break
+            
+            feat_face = None
+            faces = occ_utils.list_face(stock)
+            triangles = triangles_from_faces(faces)
+            random.shuffle(bounds)
+            for bound in bounds:
+                depth = FEAT_DEPTH_SAMPLER[feat_type](bound, triangles)
+                if depth < 0:
+                    continue
+                
+                # step 3: create feature face            
+                feat_face = SKETCH_GENERATOR[feat_type](bound)
+                if feat_face is not None:
+                    break
+    
+            # step 4: apply feature operation
+            if feat_face is None:
+                continue
+            
+            print(feat_cnt, feat_type)
+            feat_cnt += 1
+            stock, label_map = apply_feature(stock, label_map, feat_type, feat_face, bound[4] * depth)
+            if feat_cnt == num_feats[i]:
+                break
+    
+    stock, label_map = add_round(stock, label_map)
 
     return stock, label_map
 
 
-if __name__ == '__main__':
+class shape_sampler:
+    def __init__(self, shape_path, occ_display):
+        self.shape_path = shape_path
+        names = [int(name.split(os.sep)[-1].split('.')[0]) for name in glob.glob(shape_path + '*.step')]
+        if len(names) < 1:
+            names.append(0)        
+        names.sort()
+        self.shape_cnt = names[-1]
+        self.occ_display = occ_display
+        random.seed()
+        
+    def display_shape(self):
+        self.occ_display.EraseAll()
+        AIS = AIS_ColoredShape(self.shape)
+        for a_face in self.fmap:
+            AIS.SetCustomColor(a_face, colors[self.fmap[a_face]])
+    
+        self.occ_display.Context.Display(AIS)
+        self.occ_display.View_Iso()
+        self.occ_display.FitAll()   
+        
+    def next_sample(self):
+        self.shape, self.fmap = shape_from_machining_feature()
+        self.shape_cnt += 1
+        self.display_shape()                
+        
+    def save_shape(self):
+        filename = os.path.join(shape_path + str(self.shape_cnt) + '.step')        
+        id_map = {}
+        fid = 0
+        for face in self.fmap:
+            id_map[face] = fid
+            fid += 1
+            
+        occ_utils.shape_with_fid_to_step(filename , self.shape, id_map)
+        
+        filename = filename.replace('step', 'face_truth')
+        with open(filename, 'wb') as file:
+            pickle.dump(self.fmap, file)
+ 
 
-    OCC_DISPLAY, START_OCC_DISPLAY, ADD_MENU, ADD_FUNCTION_TO_MENU = init_display()
-    OCC_DISPLAY.EraseAll()
+    def save_image(self):
+        image_name = os.path.join(self.shape_path, str(self.shape_cnt) + '.jpeg')
+        self.occ_display.View.Dump(image_name)           
 
-    colors = []
-    rgb_list = np.array(np.meshgrid([0.9, 0.6, 0.3], [0.9, 0.6, 0.3], [0.9, 0.6, 0.3])).T.reshape(-1,3)
-    for rgb in rgb_list:
-        colors.append(rgb_color(rgb[0], rgb[1], rgb[2]))
+def next_shape():
+    asampler.next_sample()
 
-    random.seed()
-    SHAPE, FMAP = shape_from_machining_feature()
-#    for bound in bounds:
-#        for i in range(4):
-#            j = (i+1)%4
-#            pnt1 = occ_utils.as_occ(bound[i], gp_Pnt)
-#            pnt2 = occ_utils.as_occ(bound[j], gp_Pnt)
-#            if np.linalg.norm(bound[i] - bound[j]) < 0.000001:
-#                print('bound edge has zero length')
-#                continue
-#            try:
-#                seg_maker = GC_MakeSegment(pnt1, pnt2)
-#                edge = BRepBuilderAPI_MakeEdge(seg_maker.Value()).Edge()
-#                OCC_DISPLAY.DisplayShape(edge)
-#            except RuntimeError as error:
-#                print('main', error)
-#                print(bound[i], bound[j])
+        
+def save_shape():
+    asampler.save_shape()
 
-    AIS = AIS_ColoredShape(SHAPE)
-    for a_face in FMAP:
-        AIS.SetCustomColor(a_face, colors[FMAP[a_face]])
 
-    OCC_DISPLAY.Context.Display(AIS)
-    OCC_DISPLAY.View_Iso()
-    OCC_DISPLAY.FitAll()
+def save_image():
+    asampler.save_image()
 
+
+colors = []
+rgb_list = np.array(np.meshgrid([0.9, 0.6, 0.3], [0.9, 0.6, 0.3], [0.9, 0.6, 0.3])).T.reshape(-1,3)
+for rgb in rgb_list:
+    colors.append(rgb_color(rgb[0], rgb[1], rgb[2]))
+    
+OCC_DISPLAY, START_OCC_DISPLAY, ADD_MENU, ADD_FUNCTION_TO_MENU = init_display()            
+shape_path = '../../models/'        
+asampler = shape_sampler(shape_path, OCC_DISPLAY)
+
+if __name__ == '__main__':    
+    ADD_MENU('menu')
+    ADD_FUNCTION_TO_MENU('menu', next_shape)
+    ADD_FUNCTION_TO_MENU('menu', save_shape)
+    ADD_FUNCTION_TO_MENU('menu', save_image)
+            
     START_OCC_DISPLAY()

@@ -398,20 +398,20 @@ def map_from_shape_and_name(fmap, old_map, new_shape, new_name):
     '''
     new_map = {}
     new_faces = occ_utils.list_face(new_shape)
-
+        
     for oldf in fmap:
         old_name = old_map[oldf]
-        for samef in fmap[oldf]:
-            new_map[samef] = old_name
-            samef = same_shape_in_list(samef, new_faces)
+        for samef in fmap[oldf]:            
+            samef = same_shape_in_list(samef, new_faces)            
             if samef is None:
                 print('no same face')
                 continue
+            new_map[samef] = old_name
             new_faces.remove(samef)
-
+    
     for n_face in new_faces:
         new_map[n_face] = new_name
-
+                    
     return new_map
 
 
