@@ -161,8 +161,9 @@ def triangles_from_shape(shape, resolution):
 def point_cloud_from_labeled_shape(shape, label_map, id_map, resolution=0.1):
     '''
     input
-        shape:      TopoDS_Shape
-        name_map:   {TopoDS_Face:{'label':int, 'id':int}}
+        shape:          TopoDS_Shape
+        label_map:      {TopoDS_Face: int}
+        id_map:         {TopoDS_Face: int}
         resolution: float
     output
         cloud_pts:      [[float,float,float]]
@@ -177,15 +178,15 @@ def point_cloud_from_labeled_shape(shape, label_map, id_map, resolution=0.1):
     cloud_segs = []
     face_ids = []
     triangles = triangles_from_shape(shape, resolution)
+    print(len(triangles), 'triangles')
     for t in triangles:
         r = points_sample_from_triangle(t)
         cloud_pts += r[0]
         cloud_normals += r[1]
         cloud_segs += [label_map[r[2]]] * len(r[0])
         face_ids += [id_map[r[2]]] * len(r[0])
-#    print('number of points:', len(cloud_pts))
+    print(len(cloud_pts), 'points')
     return cloud_pts, cloud_normals, cloud_feats, cloud_segs, face_ids
-
 
 
 def resolution_from_shape(shape):
@@ -196,7 +197,7 @@ def resolution_from_shape(shape):
         resolution:     float
     '''
     xmin, ymin, zmin, xmax, ymax, zmax, xlen, ylen, zlen = occ_utils.get_boundingbox(shape, use_mesh = False)
-    resolution = max(xlen, ylen, zlen) / 256
+    resolution = max(xlen, ylen, zlen) / 128
 
     return resolution
 

@@ -9,6 +9,7 @@ import os
 import sys
 import math
 import numpy as np
+import pickle
 
 from OCC.Core.TopExp import TopExp_Explorer, topexp, topexp_MapShapesAndAncestors
 from OCC.Core.TopAbs import TopAbs_FACE, TopAbs_REVERSED, TopAbs_EDGE, TopAbs_VERTEX
@@ -29,7 +30,7 @@ from OCC.Core.XCAFDoc import XCAFDoc_DocumentTool_ShapeTool, XCAFDoc_DocumentToo
 from OCC.Core.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
 from OCC.Core.TCollection import TCollection_HAsciiString
 from OCC.Core.STEPConstruct import stepconstruct_FindEntity
-from OCC.Core.StepRepr import Handle_StepRepr_RepresentationItem
+from OCC.Core.StepRepr import StepRepr_RepresentationItem
 from OCC.Core.TopLoc import TopLoc_Location
 from OCC.Core.StlAPI import StlAPI_Reader
 from OCC.Core.GeomLib import GeomLib_IsPlanarSurface
@@ -192,70 +193,7 @@ def sample_point(face):
 
     return P, D
 
-def shape_with_fid_to_step(filename, shape, id_map):
-    '''
-    input
-        filename
-        shape
-        id_map： {TopoDS_Face: int}
-    output
-    '''
-#    print('shape_with_fid_to_step')
-#    fset = set_face(shape)
-    writer = STEPControl_Writer()
-    writer.Transfer(shape, STEPControl_AsIs)
-
-    finderp = writer.WS().TransferWriter().FinderProcess()
-
-    fset = list_face(shape)
-
-    loc = TopLoc_Location()
-    for face in fset:
-        item = stepconstruct_FindEntity(finderp, face, loc)
-        if item is None:
-            print(face)
-            continue
-        item.SetName(TCollection_HAsciiString(str(id_map[face])))
-
-    writer.Write(filename)
-
-
-def shape_with_fid_from_step(filename):
-    '''
-    input
-    output
-        shape:      TopoDS_Shape
-        id_map:  {TopoDS_Face: int}
-    '''
-#    print('shape_with_fid_from_step')
-    if not os.path.exists(filename):
-        print(filename, ' not exists')
-        return
-
-    reader = STEPControl_Reader()
-    reader.ReadFile(filename)
-    reader.TransferRoots()
-    shape = reader.OneShape()
-
-    treader = reader.WS().TransferReader().GetObject()
-
-    id_map = {}
-    fset = list_face(shape)
-    # read the face names
-    for face in fset:
-        item = treader.EntityFromShapeResult(face, 1)
-        if item.IsNull():
-            print(face)
-            continue
-        item = Handle_StepRepr_RepresentationItem.DownCast(item).GetObject()
-        name = item.Name().ToCString()
-        if name:
-            nameid = int(name)
-            id_map[face] = nameid
-
-    return shape, id_map
-
-
+                
 def shape_from_stl(filename):
     if not os.path.isfile(filename):
         raise FileNotFoundError("%s not found." % filename)
@@ -280,7 +218,6 @@ def normal_to_face_center(face):
         normal.Reverse()
     
     return normal
-
 
        
 def points_from_edge(edge):
@@ -345,7 +282,7 @@ def triangulation_from_shape(shape):
     offset = 0
     for f in faces:
         aLoc = TopLoc_Location()
-        aTriangulation = BRep_Tool().Triangulation(f, aLoc).GetObject()
+        aTriangulation = BRep_Tool().Triangulation(f, aLoc)
         aTrsf = aLoc.Transformation()
         aOrient = f.Orientation()
 

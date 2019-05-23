@@ -96,23 +96,14 @@ def face_circle(ref_pnts):
     dir_h = ref_pnts[0] - ref_pnts[1]    
     width = np.linalg.norm(dir_w)
     height = np.linalg.norm(dir_h)
-    
-    try:
-        assert width > 2.0 and height > 2.0, 'width or height too small'
-    except AssertionError as error:
-        logging.exception('error caught')
-        print(width, height)
-        return None
-    
+            
     dir_w = dir_w / width
     dir_h = dir_h / height
     normal = np.cross(dir_w, dir_h)
     
-    radius = random.uniform(1.0, min(width / 2, height / 2))
+    radius = min(width / 2, height / 2)
     
-    offset_w = random.uniform(radius, width - radius)
-    offset_h = random.uniform(radius, height - radius)
-    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
+    center = (ref_pnts[0] + ref_pnts[1] + ref_pnts[2] + ref_pnts[3]) / 4
 
     circ = gp_Circ(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), occ_utils.as_occ(normal, gp_Dir)), radius)
     edge = BRepBuilderAPI_MakeEdge(circ, 0., 2*math.pi).Edge()
@@ -129,22 +120,15 @@ def face_circle_1(ref_pnts):
     width = np.linalg.norm(edge_dir)
     edge_dir = edge_dir / width
     height = np.linalg.norm(ref_pnts[0] - ref_pnts[1])
-
-    try:
-        assert width > 2.0 and height > 1.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_circle_1', error)
-        print(width, height)
-        return None
-        
-    radius = random.uniform(1.0, min(width / 2, height))    
-    arc_offset = random.uniform(0.0, width - 2 * radius)
-    pnt1 = ref_pnts[1] + edge_dir * arc_offset
-    pnt2 = pnt1 + edge_dir * 2 * radius
-    center = pnt1 + edge_dir * radius
-    
-    pnt1 = occ_utils.as_occ(pnt1, gp_Pnt)
-    pnt2 = occ_utils.as_occ(pnt2, gp_Pnt)
+            
+    radius = min(width / 2, height)    
+    center = (ref_pnts[1] + ref_pnts[2]) / 2
+    if radius < width / 2:
+        pnt1 = occ_utils.as_occ(center - edge_dir * radius, gp_Pnt)
+        pnt2 = occ_utils.as_occ(center + edge_dir * radius, gp_Pnt)
+    else:    
+        pnt1 = occ_utils.as_occ(ref_pnts[1], gp_Pnt)
+        pnt2 = occ_utils.as_occ(ref_pnts[2], gp_Pnt)
     center = occ_utils.as_occ(center, gp_Pnt)
     
     edge1 = BRepBuilderAPI_MakeEdge(GC_MakeSegment(pnt1, pnt2).Value()).Edge()
@@ -154,7 +138,11 @@ def face_circle_1(ref_pnts):
     edge2 = BRepBuilderAPI_MakeEdge(GC_MakeArcOfCircle(circ, pnt2, pnt1, True).Value()).Edge()
 
     wire_maker = BRepBuilderAPI_MakeWire(edge1, edge2)
-    face_maker = BRepBuilderAPI_MakeFace(wire_maker.Wire())    
+    try:
+        face_maker = BRepBuilderAPI_MakeFace(wire_maker.Wire())    
+    except RuntimeError as error:
+        print(error)
+        return None
     return face_maker.Face()
 
     
@@ -163,15 +151,8 @@ def face_circle_2(ref_pnts):
     vec2 = ref_pnts[2] - ref_pnts[1]
     width = np.linalg.norm(vec2)
     height = np.linalg.norm(vec0)
-
-    try:
-        assert width > 1.0 and height > 1.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_circle_2', error)
-        print(width, height)
-        return None
-        
-    radius = random.uniform(0.5, 0.5 * min(width, height))
+            
+    radius = min(width, height)
     vec0 = vec0 / np.linalg.norm(vec0)
     vec2 = vec2 / np.linalg.norm(vec2)
     
@@ -196,8 +177,57 @@ def face_circle_2(ref_pnts):
 
     
 def face_circular_end_rect(ref_pnts):
+    dir_w = ref_pnts[2] - ref_pnts[1]
+    dir_h = ref_pnts[0] - ref_pnts[1]    
+    width = np.linalg.norm(dir_w)
+    height = np.linalg.norm(dir_h)
     
-    return None
+    pt0 = ref_pnts[0]
+    pt1 = ref_pnts[1]
+    pt2 = ref_pnts[2]
+    pt3 = ref_pnts[3]
+    if width < height:
+        pt0 = ref_pnts[1]
+        pt1 = ref_pnts[2]
+        pt2 = ref_pnts[3]
+        pt3 = ref_pnts[0]
+        radius = width
+        width = height
+        height = radius
+        
+    radius = min(height / 2, width / 2 - 0.5)        
+    dir_w = (pt2 - pt1) / width
+    dir_h = (pt0 - pt1) / height    
+    
+    pt1 = pt1 + dir_w * radius
+    pt2 = pt2 - dir_w * radius
+    pt3 = pt2 + dir_h * 2 * radius
+    pt0 = pt1 + dir_h * 2 * radius
+    c01 = (pt1 + pt0) / 2
+    c23 = (pt2 + pt3) / 2
+    
+    pt1 = occ_utils.as_occ(pt1, gp_Pnt)
+    pt0 = occ_utils.as_occ(pt0, gp_Pnt)
+    c01 = occ_utils.as_occ(c01, gp_Pnt)
+    pt2 = occ_utils.as_occ(pt2, gp_Pnt)
+    pt3 = occ_utils.as_occ(pt3, gp_Pnt)
+    c23 = occ_utils.as_occ(c23, gp_Pnt)
+    
+    normal = occ_utils.as_occ(np.cross(dir_w, dir_h), gp_Dir)
+    cir01 = gp_Circ(gp_Ax2(c01, normal), radius)
+    cir23 = gp_Circ(gp_Ax2(c23, normal), radius)    
+    seg_maker = [GC_MakeArcOfCircle(cir01, pt0, pt1, True), GC_MakeSegment(pt1, pt2), GC_MakeArcOfCircle(cir23, pt2, pt3, True), GC_MakeSegment(pt3, pt0)]
+    wire_maker = BRepBuilderAPI_MakeWire()
+    for sm in seg_maker:
+        if sm.IsDone:
+            edge = BRepBuilderAPI_MakeEdge(sm.Value()).Edge()
+            wire_maker.Add(edge)
+        else:
+            return None
+            
+    face_maker = BRepBuilderAPI_MakeFace(wire_maker.Wire())
+
+    return face_maker.Face()
 
     
 def face_open_circular_end_rect_v(ref_pnts):
@@ -205,28 +235,23 @@ def face_open_circular_end_rect_v(ref_pnts):
     dir_h = ref_pnts[0] - ref_pnts[1]
     width = np.linalg.norm(dir_w)
     height = np.linalg.norm(dir_h)
-
-    try:
-        assert width > 1.0 and height > 1.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_circle_2', error)
-        print(width, height)
-        return None
-
+    if height - width / 2 > 1.0:
+        radius = width / 2
+    else:
+        radius = random.uniform(0.5, height / 2)
+    
+    offset = width / 2 - radius
     dir_w = dir_w / width
     dir_h = dir_h / height
     normal = np.cross(dir_w, dir_h)
 
-    rect_w = random.uniform(1.0, min(width, height))        
-    rect_h = random.uniform(rect_w / 2 + 0.5, height)
-    offset = random.uniform(0.0, width - rect_w)
     pt1 = ref_pnts[1] + dir_w * offset
-    pt2 = pt1 + dir_w * rect_w
-    pt3 = pt2 + dir_h * (rect_h - rect_w / 2)
-    pt4 = pt1 + dir_h * (rect_h - rect_w / 2)
-    
-    center = pt4 + dir_w * rect_w / 2
-    circ = gp_Circ(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), occ_utils.as_occ(normal, gp_Dir)), rect_w / 2)
+    pt2 = pt1 + dir_w * 2 * radius
+    pt3 = pt2 + dir_h * (height - radius)
+    pt4 = pt1 + dir_h * (height - radius)
+
+    center = pt4 + dir_w * radius
+    circ = gp_Circ(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), occ_utils.as_occ(normal, gp_Dir)), radius)
     pt1 = occ_utils.as_occ(pt1, gp_Pnt)
     pt2 = occ_utils.as_occ(pt2, gp_Pnt)
     pt3 = occ_utils.as_occ(pt3, gp_Pnt)
@@ -248,22 +273,13 @@ def face_open_circular_end_rect_h(ref_pnts):
     width = np.linalg.norm(dir_w)
     height = np.linalg.norm(dir_h)
 
-    try:
-        assert width > 2.0 and height > 0.5, 'width or height too small'
-    except AssertionError as error:
-        print('face_circle_2', error)
-        print(width, height)
-        return None
-
     dir_w = dir_w / width
     dir_h = dir_h / height
     normal = np.cross(dir_w, dir_h)
 
-    rect_h = random.uniform(0.5, min(height, width / 2))    
-    rect_w = random.uniform(2 * rect_h + 1.0, width)        
-    offset = random.uniform(0.0, width - rect_w)
-    pt1 = ref_pnts[1] + dir_w * offset
-    pt2 = pt1 + dir_w * rect_w
+    rect_h = min(height, width / 2 - 0.5)    
+    pt1 = ref_pnts[1]
+    pt2 = ref_pnts[2]
     pt3 = pt2 - dir_w * rect_h + dir_h * rect_h
     pt4 = pt1 + dir_w * rect_h + dir_h * rect_h
     
@@ -292,23 +308,14 @@ def face_hexagon(ref_pnts):
     dir_h = ref_pnts[0] - ref_pnts[1]    
     width = np.linalg.norm(dir_w)
     height = np.linalg.norm(dir_h)
-    
-    try:
-        assert width > 2.0 and height > 2.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_hexagon', error)
-        print(width, height)
-        return None
-    
+        
     dir_w = dir_w / width
     dir_h = dir_h / height
     normal = occ_utils.as_occ(np.cross(dir_w, dir_h), gp_Dir)
 
-    radius = random.uniform(1.0, min(width / 2, height / 2))
+    radius = min(width / 2, height / 2)
     
-    offset_w = random.uniform(radius, width - radius)
-    offset_h = random.uniform(radius, height - radius)
-    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
+    center = (ref_pnts[0] + ref_pnts[1] + ref_pnts[2] + ref_pnts[3]) / 4
     
     circ = Geom_Circle(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), normal), radius)
 
@@ -339,22 +346,12 @@ def face_oring(ref_pnts):
     width = np.linalg.norm(dir_w)
     height = np.linalg.norm(dir_h)
     
-    try:
-        assert width > 2.0 and height > 2.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_oring', error)
-        print(width, height)
-        return None
-    
     dir_w = dir_w / width
     dir_h = dir_h / height
     normal = occ_utils.as_occ(np.cross(dir_w, dir_h), gp_Dir)
 
-    outer_r = random.uniform(1.0, min(width / 2, height / 2))
-    
-    offset_w = random.uniform(outer_r, width - outer_r)
-    offset_h = random.uniform(outer_r, height - outer_r)
-    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
+    outer_r = min(width / 2, height / 2)    
+    center = (ref_pnts[0] + ref_pnts[1] + ref_pnts[2] + ref_pnts[3]) / 4
     
     inner_r= random.uniform(outer_r / 3, outer_r - 0.2)
 
@@ -374,155 +371,36 @@ def face_oring(ref_pnts):
 
     
 def face_pentagon(ref_pnts):
-    dir_w = ref_pnts[2] - ref_pnts[1]
     dir_l = ref_pnts[0] - ref_pnts[1]
     dir_r = ref_pnts[3] - ref_pnts[2]    
 
-    normal = np.cross(dir_w, dir_l)    
-    edge_dir = np.cross(normal, dir_w)
-    edge_dir = edge_dir / np.linalg.norm(edge_dir)
-
-    width = np.linalg.norm(dir_w)    
-    height = min(np.dot(dir_l, edge_dir), np.dot(dir_r, edge_dir))
-    
-    try:
-        assert width > 2.0 and height > 2.5, 'width or height too small'
-    except AssertionError as error:
-        print('face_pentagon', error)
-        print(width, height)
-        return None       
-
-    offset1 = random.uniform(1.0, height - 2.0)
-    offset2 = random.uniform(offset1 + 0.5, height - 1.0)
-    
-    dir_l = dir_l / np.linalg.norm(dir_l)
-    dir_r = dir_r / np.linalg.norm(dir_r)
-    
-    pt0 = ref_pnts[1] +  dir_l * np.dot(offset1 * edge_dir, dir_l)
+    ratio = random.uniform(0.4, 0.8)
+    pt4 = (ref_pnts[0] + ref_pnts[3]) / 2    
+    pt0 = ref_pnts[1] +  dir_l * ratio
     pt1 = ref_pnts[1]
     pt2 = ref_pnts[2]
-    pt3 = ref_pnts[2] + dir_r * np.dot(offset1 * edge_dir, dir_r)
-    pt4 = (pt1 + pt2) / 2 + edge_dir * offset2
-
+    pt3 = ref_pnts[2] + dir_r * ratio
+    
     return occ_utils.face_polygon([pt0, pt1, pt2, pt3, pt4])
     
     
 def face_quad(ref_pnts):
-    dir_w = ref_pnts[2] - ref_pnts[1]
     dir_l = ref_pnts[0] - ref_pnts[1]
     dir_r = ref_pnts[3] - ref_pnts[2]    
-
-    normal = np.cross(dir_w, dir_l)    
-    edge_dir = np.cross(normal, dir_w)
-    edge_dir = edge_dir / np.linalg.norm(edge_dir)
-
-    width = np.linalg.norm(dir_w)    
-    height = min(np.dot(dir_l, edge_dir), np.dot(dir_r, edge_dir))
-    
-    try:
-        assert width > 2.0 and height > 2.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_quad', error)
-        print(width, height)
-        return None       
-
-    offset1 = random.uniform(1.0, height - 1.0)
-    offset2 = random.uniform(1.0, height - 1.0)
-    
-    dir_l = dir_l / np.linalg.norm(dir_l)
-    dir_r = dir_r / np.linalg.norm(dir_r)
-    
-    pt0 = ref_pnts[1] +  dir_l * np.dot(offset1 * edge_dir, dir_l)
+        
+    mark = [0, 1]
+    random.shuffle(mark)
+    ratio = random.uniform(0.3, 0.6)
+    pt0 = ref_pnts[0] - dir_l * mark[0] * ratio
     pt1 = ref_pnts[1]
     pt2 = ref_pnts[2]
-    pt3 = ref_pnts[2] + dir_r * np.dot(offset2 * edge_dir, dir_r)
+    pt3 = ref_pnts[3] - dir_r * mark[1] * ratio
 
     return occ_utils.face_polygon([pt0, pt1, pt2, pt3])
-
+  
     
-def face_rectangle(ref_pnts):
-    dir_w = ref_pnts[2] - ref_pnts[1]
-    dir_h = ref_pnts[0] - ref_pnts[1]    
-    width = np.linalg.norm(dir_w)
-    height = np.linalg.norm(dir_h)
-    
-    try:
-        assert width > 1.0 and height > 1.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_rectangle', error)
-        print(width, height)
-        return None
-    
-    dir_w = dir_w / width
-    dir_h = dir_h / height
-    
-    rect_w = random.uniform(1.0, min(width, height))
-    rect_h = random.uniform(1.0, min(width, height))
-    offset_w = random.uniform(0.0, width - rect_w)
-    offset_h = random.uniform(0.0, height - rect_h)
-    
-    pt1 = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
-    pt2 = pt1 + rect_w * dir_w
-    pt3 = pt2 + rect_h * dir_h
-    pt4 = pt1 + rect_h * dir_h
-    
-    return occ_utils.face_polygon([pt1, pt2, pt3, pt4])
-    
-    
-def face_rect_1(ref_pnts):
-    edge_dir = ref_pnts[2] - ref_pnts[1]
-    width = np.linalg.norm(edge_dir)
-    edge_dir = edge_dir / width
-    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1])
-    if width < 1.0 or height < 1.0:
-        return None
-    
-    rect_w = random.uniform(1.0, width)
-    rect_h = random.uniform(1.0, height)
-    offset = random.uniform(0.0, width - rect_w)
-    
-    pnt1 = ref_pnts[1] + edge_dir * offset
-    pnt2 = pnt1 + edge_dir * rect_w
-    normal = np.cross(edge_dir, ref_pnts[0] - ref_pnts[1])
-    edge_normal = np.cross(normal, edge_dir)
-    edge_normal = edge_normal / np.linalg.norm(edge_normal)
-    pnt3 = pnt2 + edge_normal * rect_h
-    pnt4 = pnt1 + edge_normal * rect_h
-
-    return occ_utils.face_polygon([pnt1, pnt2, pnt3, pnt4])
-
-    
-def face_rect_2(ref_pnts):
-    vec0 = ref_pnts[0] - ref_pnts[1]
-    vec2 = ref_pnts[2] - ref_pnts[1]
-    if np.linalg.norm(vec0) < 0.000001 or np.linalg.norm(vec2) < 0.000001:
-        print('zero length edges')
-        print(ref_pnts)
-        return None
-
-    ratio0 = random.uniform(0.5 / np.linalg.norm(vec0), 1.0)
-    ratio2 = random.uniform(0.5 / np.linalg.norm(vec2), 1.0)
-
-    pt0 = ref_pnts[1] + vec0 * ratio0
-    pt1 = ref_pnts[1]
-    pt2 = ref_pnts[1] + vec2 * ratio2
-    pt3 = ref_pnts[1] + vec0 * ratio0 + vec2 * ratio2        
-
-    return occ_utils.face_polygon([pt0, pt1, pt2, pt3])
-
-    
-def face_rect_3(ref_pnts):
-    vec1 = ref_pnts[0] - ref_pnts[1]
-    vec2 = ref_pnts[3] - ref_pnts[2]
-
-    ratio = random.uniform(0.5 / np.linalg.norm(vec1), 1.0)
-
-    pt0 = ref_pnts[1] + vec1 * ratio
-    pt1 = ref_pnts[1]
-    pt2 = ref_pnts[2]
-    pt3 = ref_pnts[2] + vec2 * ratio
-
-    return occ_utils.face_polygon([pt0, pt1, pt2, pt3])
+def face_rect(ref_pnts):
+    return occ_utils.face_polygon(ref_pnts[:4])
 
     
 def face_triangle(ref_pnts):
@@ -530,23 +408,14 @@ def face_triangle(ref_pnts):
     dir_h = ref_pnts[0] - ref_pnts[1]    
     width = np.linalg.norm(dir_w)
     height = np.linalg.norm(dir_h)
-    
-    try:
-        assert width > 2.0 and height > 2.0, 'width or height too small'
-    except AssertionError as error:
-        print('face_triangle', error)
-        print(width, height)
-        return None
-    
+        
     dir_w = dir_w / width
     dir_h = dir_h / height
     normal = occ_utils.as_occ(np.cross(dir_w, dir_h), gp_Dir)
     
-    radius = random.uniform(1.0, min(width / 2, height / 2))
+    radius = min(width / 2, height / 2)
     
-    offset_w = random.uniform(radius, width - radius)
-    offset_h = random.uniform(radius, height - radius)
-    center = ref_pnts[1] + dir_w * offset_w + dir_h * offset_h
+    center = (ref_pnts[0] + ref_pnts[1] + ref_pnts[2] + ref_pnts[3]) / 4
 
     circ = Geom_Circle(gp_Ax2(gp_Pnt(center[0], center[1], center[2]), normal), radius)
     
@@ -568,39 +437,14 @@ def face_triangle(ref_pnts):
     
 def face_triangle_1(ref_pnts):
     edge_dir = ref_pnts[2] - ref_pnts[1]
-    width = np.linalg.norm(edge_dir)
-    edge_dir = edge_dir / width
-    height = np.linalg.norm(ref_pnts[0] - ref_pnts[1])
-    if width < 1.0 or height < 1.0:
-        return None
-    
-    tri_w = random.uniform(1.0, width)
-    tri_h = random.uniform(1.0, height)
-    offset = random.uniform(0.0, width - tri_w)
-    
-    pnt1 = ref_pnts[1] + edge_dir * offset
-    pnt2 = pnt1 + edge_dir * tri_w
+
     normal = np.cross(edge_dir, ref_pnts[0] - ref_pnts[1])
     edge_normal = np.cross(normal, edge_dir)
     edge_normal = edge_normal / np.linalg.norm(edge_normal)
-    pnt3 = pnt1 + edge_dir * tri_w / 2 + edge_normal * tri_h
+    pnt3 = ref_pnts[0] + edge_dir / 2
 
-    return occ_utils.face_polygon([pnt1, pnt2, pnt3])
+    return occ_utils.face_polygon([ref_pnts[1], ref_pnts[2], pnt3])
 
     
-def face_triangle_2(ref_pnts):
-    vec0 = ref_pnts[0] - ref_pnts[1]
-    vec2 = ref_pnts[2] - ref_pnts[1]
-    if np.linalg.norm(vec0) < 0.000001 or np.linalg.norm(vec2) < 0.000001:
-        print('zero length edges')
-        print(ref_pnts)
-        return None
-
-    ratio0 = random.uniform(0.5 / np.linalg.norm(vec0), 1.0)
-    ratio2 = random.uniform(0.5 / np.linalg.norm(vec2), 1.0)
-
-    pt0 = ref_pnts[1] + vec0 * ratio0
-    pt1 = ref_pnts[1]
-    pt2 = ref_pnts[1] + vec2 * ratio2       
-
-    return occ_utils.face_polygon([pt0, pt1, pt2])
+def face_triangle_2(ref_pnts):     
+    return occ_utils.face_polygon([ref_pnts[0], ref_pnts[1], ref_pnts[2]])

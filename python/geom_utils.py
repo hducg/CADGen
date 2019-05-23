@@ -7,6 +7,8 @@ Created on Fri Mar 22 15:03:49 2019
 import math
 import numpy as np
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 def ray_triangle_intersect(ray_tri):
     '''
@@ -46,7 +48,6 @@ def ray_triangle_intersect(ray_tri):
         return float('-inf')
 
     return np.dot(v0v2, qvec) * invDet
-
 
 
 def ray_triangle_set_intersect(ray_origin, ray_direction, tri_list):
@@ -253,21 +254,53 @@ def points_inside_rect(pnt0, pnt1, pnt2, pnt3, resolution = 0.5):
     num_h = int(height / resolution)
     if num_h == 0:
         num_h = 1
-    
     delta_w = width / num_w
-    delta_h = width / num_h
+    delta_h = height / num_h
     
     dir_w = dir_w / width
     dir_h = dir_h / height
     
-    idx = np.array(np.meshgrid(np.arange(0, num_w + 1), np.arange(0, num_h + 1))).T.reshape(-1,2)    
+    idx = np.array(np.meshgrid(np.arange(0, num_w + 1), np.arange(0, num_h + 1))).T.reshape(-1,2)   
     points = pnt1 + dir_w * delta_w * np.array(idx[:, 0]).reshape(-1, 1) + dir_h * delta_h * np.array(idx[:, 1]).reshape(-1, 1)
     return points
 
+
+def dist_point_plane(pnt, pl_pnt, pl_normal):
+    p_dir = np.array(pnt) - np.array(pl_pnt)    
+    
+    dist = np.dot(p_dir, np.array(pl_normal))
+    
+    return dist
+
+
+def outer_radius_triangle(pt1, pt2, pt3):
+    a = np.linalg.norm(np.array(pt1) - np.array(pt2))
+    b = np.linalg.norm(np.array(pt2) - np.array(pt3))
+    c = np.linalg.norm(np.array(pt3) - np.array(pt1))
+    p = (a + b + c) / 2
+    return a * b * c / (4 * np.sqrt(p * (p - a) * (p - b) * (p - c)))
+
     
 if __name__ == '__main__':
-    pnt = np.array([0.5, -0.5, 0.0])
-    pnt1 = np.array([0.0, 0.0, 0.0])
-    pnt2 = np.array([1.0, 0.0, 0.0])
-    normal = np.array([0.0, 1.0, 0.0])
-    print(ray_segment_intersect(pnt, normal, pnt1, pnt2))
+    pnt0 = np.array([0.0, 0.0, 0.0])
+    pnt1 = np.array([5.0, 0.0, 0.0])
+    pnt2 = np.array([5.0, 10.0, 0.0])
+    pnt3 = np.array([0.0, 10.0, 0.0])
+    pnts = points_inside_rect(pnt0, pnt1, pnt2, pnt3, 1)
+    print(len(pnts))
+    
+#    width = 10
+#    height = 10
+#    fig1 = plt.figure()
+#    ax1 = fig1.add_subplot(111, aspect='equal')
+#    ax1.add_patch(patches.Rectangle((0, 0), width, height))
+#    plt.ylim(10)
+#    plt.xlim(10)
+#    plt.axes().set_aspect('equal')
+#    plt.scatter(pnts[:,0], pnts[:,1], aspect='equal')
+#    plt.show()
+    
+#    fig1.show()
+#    print(outer_radius_triangle(pnt, pnt1, pnt2))
+#    normal = np.array([0.0, 1.0, 0.0])
+#    print(ray_segment_intersect(pnt, normal, pnt1, pnt2))

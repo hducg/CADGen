@@ -7,12 +7,15 @@ Created on Fri Jan 18 17:05:26 2019
 import os
 import pickle
 import argparse
+import glob
+import numpy as np
 
 from OCC.AIS import AIS_PointCloud, AIS_ColoredShape
 from OCC.Graphic3d import Graphic3d_ArrayOfPoints
 from OCC.Display.OCCViewer import rgb_color
 from OCC.Display.SimpleGui import init_display
-
+from OCC.Core.gp import gp_Circ, gp_Ax2, gp_Pnt, gp_Dir, gp_Vec
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeVertex, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeFace
 
 import file_utils
 import occ_utils
@@ -24,6 +27,76 @@ colors = [rgb_color(0,0,0), rgb_color(0.75,0.75,0.75), rgb_color(1,0,0), rgb_col
           rgb_color(0,0.4,0.4), rgb_color(0.4,0,0.4)]
 
 
+class SegmentsViewer:
+    def __init__(self, pts, occ_display):
+        for i in range(len(pts) - 1):
+            occ_display.DisplayShape(BRepBuilderAPI_MakeEdge(occ_utils.as_occ(pts[i], gp_Pnt), occ_utils.as_occ(pts[i + 1], gp_Pnt)).Edge())
+            
+class PointsViewer:
+    def __init__(self, points, occ_display):
+        n_points = len(points)
+        points_3d = Graphic3d_ArrayOfPoints(n_points)
+        for pt in points:
+            points_3d.AddVertex(pt[0], pt[1], pt[2])
+
+        point_cloud = AIS_PointCloud()
+        point_cloud.SetPoints(points_3d)
+        ais_context = occ_display.GetContext()                
+        ais_context.Display(point_cloud)
+        
+        
+class ShapeViewer:
+    def __init__(self, shape_path, occ_display):
+        self.colors = []
+        rgb_list = np.array(np.meshgrid([0.9, 0.6, 0.3], [0.9, 0.6, 0.3], [0.9, 0.6, 0.3])).T.reshape(-1,3)
+        for rgb in rgb_list:
+            self.colors.append(rgb_color(rgb[0], rgb[1], rgb[2]))
+            
+        self.shape_path = shape_path
+        self.names = [name.split(os.sep)[-1].split('.')[0] for name in glob.glob(shape_path + '*.step')]                
+        self.shape_cnt = -1#random.randint(0, len(self.names))
+        self.occ_display = occ_display
+                
+    def display_shape(self):
+        self.occ_display.EraseAll()
+        AIS = AIS_ColoredShape(self.shape)
+        for a_face in self.label_map:
+            AIS.SetCustomColor(a_face, self.colors[self.label_map[a_face]])
+    
+        self.occ_display.Context.Display(AIS)
+        self.occ_display.View_Iso()
+        self.occ_display.FitAll()
+        
+    def load_shape(self, shape, label_map):
+        self.shape = shape
+        self.label_map = label_map
+        
+    def read_shape(self):
+        filename = os.path.join(self.shape_path, self.names[self.shape_cnt] + '.step')
+        self.shape, face_ids = occ_utils.shape_with_fid_from_step(filename)
+        
+        filename = os.path.join(self.shape_path, self.names[self.shape_cnt] + '.face_truth')
+        with open(filename, 'rb') as file:
+            face_truth = pickle.load(file)
+        self.label_map = {f:face_truth[face_ids[f]] for f in face_ids}
+        
+    def next_sample(self):
+        self.shape_cnt = (self.shape_cnt + 1)%len(self.names)#random.randint(0, len(self.names))
+        print(self.names[self.shape_cnt])
+        self.read_shape()
+        self.display_shape()
+                       
+    def next_batch(self):
+        self.shape_cnt = (self.shape_cnt + 24)%len(self.names)#random.randint(0, len(self.names))
+        print(self.names[self.shape_cnt])
+        self.read_shape()
+        self.display_shape()
+        
+    def save_image(self):
+        image_name = os.path.join(self.shape_path, str(self.shape_cnt) + '.jpeg')
+        self.occ_display.View.Dump(image_name)  
+        
+        
 class SegShapeViewer:
     '''
     input
@@ -86,15 +159,15 @@ class SegShapeViewer:
 
 
     def display(self):
-        if self.shape_points_mode is 'shape':
-            if self.truth_predicted_mode is 'truth':
+        if self.shape_points_mode == 'shape':
+            if self.truth_predicted_mode == 'truth':
                 display_shape(self.shape, self.face_truth)
                 self.label_suffix = '_shape_groundtruth'
             else:
                 display_shape(self.shape, self.face_predicted)
                 self.label_suffix = '_shape_predicted'
         else:
-            if self.truth_predicted_mode is 'truth':
+            if self.truth_predicted_mode == 'truth':
                 display_points(self.points, self.points_truth)
                 self.label_suffix = '_points_groundtruth'
             else:
@@ -145,16 +218,15 @@ def display_points(pts, labels):
             points_3d.AddVertex(pt[0], pt[1], pt[2])
 
         point_cloud = AIS_PointCloud()
-        point_cloud.SetPoints(points_3d.GetHandle())
+        point_cloud.SetPoints(points_3d)
         point_cloud.SetColor(colors[i])
 
-        ais_context.Display(point_cloud.GetHandle())
+        ais_context.Display(point_cloud)
 #    occ_display.View_Iso()
     occ_display.FitAll()
 
 
-occ_display, start_occ_display, add_menu, add_function_to_menu = init_display()
-ais_context = occ_display.GetContext().GetObject()
+
 
 #category_names = ['03001627','04099429','03790512','03797390']
 #dataset_dir = 'F:/wjcao/datasets/ocnn'
@@ -162,12 +234,8 @@ ais_context = occ_display.GetContext().GetObject()
 #octree_list_file_name = dataset_dir + category_names[0] + '_octree_names_shuffle.txt'
 
 
-def next_shape():
-    points_render.next_shape()
-
-
-def save_image():
-    points_render.save_image()
+#def next_shape():
+#    points_render.next_shape()
 
 
 def save_all():
@@ -179,7 +247,7 @@ def save_all():
 
 
 def switch_shape_points():
-    if points_render.shape_points_mode is 'shape':
+    if points_render.shape_points_mode == 'shape':
         points_render.shape_points_mode = 'points'
         points_render.display()
     else:
@@ -188,14 +256,20 @@ def switch_shape_points():
 
 
 def switch_truth_predicted():
-    if points_render.truth_predicted_mode is 'predicted':
+    if points_render.truth_predicted_mode == 'predicted':
         points_render.truth_predicted_mode = 'truth'
         points_render.display()
     else:
         points_render.truth_predicted_mode = 'predicted'
         points_render.display()
 
-
+def next_shape():
+    asampler.next_sample()
+       
+def next_batch():
+    asampler.next_batch()
+    
+    
 if __name__ == '__main__':
     '''
     input:
@@ -216,30 +290,27 @@ if __name__ == '__main__':
 
         batchname, which test result to render, used to find batchname_list dir
     '''
-    global points_render
-    PARSER = argparse.ArgumentParser()
+    occ_display, start_occ_display, add_menu, add_function_to_menu = init_display()
+    ais_context = occ_display.GetContext()
+    shape_path = '../../models/'
+    
+#    global points_render
+#    points_render = SegShapeViewer(shape_path, ARGS.batchname)
+    
+    global asampler        
+    asampler = ShapeViewer(shape_path, occ_display)   
 
-    PARSER.add_argument('--rootdir',
-                        '-r',
-                        type=str,
-                        help='root dir containning the shape dir, points dir, \
-                        octree dir, lmdb dir, feature dir, and list dir',
-                    required=True)
-    PARSER.add_argument('--batchname',
-                        '-b',
-                        type=str,
-                        help='category name of the dataset, used to name other dirs',
-                        required=False,
-                        default='')
-    ARGS = PARSER.parse_args()
-
-    points_render = SegShapeViewer(ARGS.rootdir, ARGS.batchname)
-
+    def save_image():
+        image_name = shape_path + '/image.jpeg'
+        occ_display.View.Dump(image_name)    
+        
     add_menu('Display')
-    add_function_to_menu('Display', next_shape)
     add_function_to_menu('Display', switch_shape_points)
     add_function_to_menu('Display', switch_truth_predicted)
     add_function_to_menu('Display', save_image)
     add_function_to_menu('Display', save_all)
-
+    add_menu('shape')
+    add_function_to_menu('shape', next_shape)
+    add_function_to_menu('shape', next_batch)
+    add_function_to_menu('shape', save_image)
     start_occ_display()
