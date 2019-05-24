@@ -7,6 +7,7 @@ Created on Tue May 21 16:07:58 2019
 import os
 import pickle
 import time
+import glob
 
 from OCC.Core.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
 from OCC.Core.TopLoc import TopLoc_Location
@@ -134,13 +135,31 @@ class LabeledShape:
         print(self.shape_name)
 
 
+def load_next():
+    global shape_index
+    global shape_list
+    
+    shape_index = (shape_index + 1) % len (shape_list)
+    the_shape.load(shape_path, shape_list[shape_index])
+    the_shape.display(occ_display)    
+    
 if __name__ == '__main__':
     occ_display, start_occ_display, add_menu, add_function_to_menu = init_display()
+    add_menu('shape')
+    add_function_to_menu('shape', load_next)
+
+    global the_shape    
+    global shape_path
+    global shape_list
+    global shape_index
+    
     rootdir = '../../dataset/machining_feature/'
-    the_shape = LabeledShape()
     shape_path = rootdir + 'shape/'
-    shape_name = '0-9-23'
-    the_shape.load(shape_path, shape_name)
-#    the_shape.directive((0,1))
+    shape_list = [item.split('/')[-1].split('.')[0] for item in glob.glob(shape_path + '*.step')]
+#    print(shape_list)
+    shape_index = 0
+    
+    the_shape = LabeledShape()    
+    the_shape.load(shape_path, shape_list[shape_index])
     the_shape.display(occ_display)    
     start_occ_display()

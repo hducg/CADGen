@@ -8,9 +8,11 @@ Created on Fri Feb 22 16:24:02 2019
 import os
 from multiprocessing import Pool
 from itertools import combinations_with_replacement
+import logging
 
 import shape
 
+logging.basicConfig(level=logging.INFO, filename='feature.log')
 
 def generate_shape(arg):
     '''
@@ -37,5 +39,5 @@ if __name__ == '__main__':
     for num_combo in range(2, 7):
         combos += list(combinations_with_replacement(range(24), num_combo))
     print(len(combos), 'models')
-    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[:10]])
+    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[256:512]])
 
