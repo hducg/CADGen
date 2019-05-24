@@ -268,7 +268,7 @@ output
     triangle_faces: [TopoDS_Face]    
 '''    
 def triangulation_from_shape(shape):
-    linear_deflection = 0.1
+    linear_deflection = 0.01
     angular_deflection = 0.5
     mesh = BRepMesh_IncrementalMesh(shape, linear_deflection, False, angular_deflection, True)
     mesh.Perform()

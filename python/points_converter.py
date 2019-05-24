@@ -5,12 +5,14 @@ Created on Wed May 22 16:30:39 2019
 @author: 2624224
 """
 import os
-import argparse
 import glob
 from multiprocessing import Pool
+import logging
 
 import shape
 import points
+
+logging.basicConfig(level=logging.INFO, filename='points.log', filemode='w')
 
 def generate_points(arg):
     '''
@@ -18,15 +20,16 @@ def generate_points(arg):
     '''
     points_path = arg[0]
     shape_path = arg[1]
-    shape_name = shape_path.split('/')[-1].split('.')[0]
+    shape_name = shape_path.split(os.sep)[-1].split('.')[0]
     shape_path = shape_path[:-len(shape_name)-5]
     
+    logging.info(shape_name)
     a_shape = shape.LabeledShape()
     a_shape.load(shape_path, shape_name)
     
     a_points = points.LabeledPoints()
     a_points.convert(a_shape)
-    a_points.save(points_path, shape_name)    
+    a_points.save(points_path, shape_name)        
         
         
 if __name__ == '__main__':
@@ -37,7 +40,6 @@ if __name__ == '__main__':
     if not os.path.exists(points_dir):
         os.mkdir(points_dir)
         
-    shape_paths = glob.glob(shape_dir + '*.step')
-    print(shape_paths)
+    shape_paths = glob.glob(shape_dir + '*.step')    
     Pool().map(generate_points, [(points_dir, shape_path) for shape_path in shape_paths])
     

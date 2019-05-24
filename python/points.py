@@ -88,7 +88,7 @@ if __name__ == '__main__':
     the_pts = LabeledPoints()
 #    the_pts.convert(the_shape)
     pts_path = rootdir + 'points/'
-    pts_name = '0-9-23'
+    pts_name = '7-10-23-24'
     the_pts.load(pts_path, pts_name)
     the_pts.display(occ_display)
     start_occ_display()

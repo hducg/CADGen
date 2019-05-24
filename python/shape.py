@@ -162,5 +162,6 @@ if __name__ == '__main__':
     the_shape = LabeledShape()    
 #    the_shape.load(shape_path, shape_list[shape_index])
     the_shape.directive((7,10,23))
+    the_shape.save(shape_path)
     the_shape.display(occ_display)    
     start_occ_display()
