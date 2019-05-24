@@ -19,9 +19,10 @@ def generate_shape(arg):
     generate num_shapes random shapes in shape_dir
     '''
     shape_dir = arg[0]
-    combo = arg[1]
+    combo = arg[1]    
     ashape = shape.LabeledShape()
     ashape.directive(combo)
+    logging.info(ashape.shape_name + ' done')
     ashape.save(shape_dir)
 
 
@@ -39,5 +40,5 @@ if __name__ == '__main__':
     for num_combo in range(2, 7):
         combos += list(combinations_with_replacement(range(24), num_combo))
     print(len(combos), 'models')
-    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[512:1024]])
+    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[1024:2048]])
 

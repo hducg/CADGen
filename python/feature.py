@@ -497,7 +497,7 @@ def depth_blind(bound, triangles):
 def depth_through_slot(bound, triangles):
     d_min, _ = depth_min_max(bound, triangles, 10.0)
     if d_min < 0:
-        logging.warning('no valid through slot depth')
+#        logging.warning('no valid through slot depth')
         return float('-inf')
     return 10.0
 
@@ -647,10 +647,10 @@ def add_sketch(stock, label_map, feat_type):
     # 1. max bounds
 #    OCC_DISPLAY.DisplayShape(stock)
     global THE_BOUND
-    logging.info('1. sketch bound')
+#    logging.info('1. sketch bound')
     bounds = SKETCH_BOUND_SAMPLER[feat_type](stock, label_map)
     if len(bounds) < 1:
-        logging.warning('no sketch plane found')
+#        logging.warning('no sketch plane found')
         return stock, label_map
 
     feat_face = None
@@ -659,7 +659,7 @@ def add_sketch(stock, label_map, feat_type):
     random.shuffle(bounds)
     depth = float('-inf')
 #        display_segments([bound_max[0], bound_max[1], bound_max[2], bound_max[3], bound_max[0]])
-    logging.info('2. feature bound')
+#    logging.info('2. feature bound')
     try_cnt = 0
     while try_cnt < len(bounds):
         bound_max = random.choice(bounds)
@@ -674,7 +674,7 @@ def add_sketch(stock, label_map, feat_type):
            continue
 
         # 5. create sketch
-        logging.info('3. generate sketch')
+#        logging.info('3. generate sketch')
         feat_face = SKETCH_GENERATOR[feat_type](bound)
         try_cnt = len(bounds)
 
@@ -683,12 +683,12 @@ def add_sketch(stock, label_map, feat_type):
         if try_cnt == len(bounds):
             bw = np.linalg.norm(bound[2] - bound[1])
             bh = np.linalg.norm(bound[0] - bound[1])
-            logging.warning('feature bound failed', bw, bh)
+#            logging.warning('feature bound failed', bw, bh)
         else:
-            logging.warning('failed create sketch')
+#            logging.warning('failed create sketch')
         return stock, label_map
 
-    logging.info('4. apply feature', depth)
+#    logging.info('4. apply feature', depth)
     stock, label_map = apply_feature(stock, label_map, feat_type, feat_face, bound[4] * depth)
     return stock, label_map
 
@@ -701,8 +701,8 @@ def shape_from_directive(combo):
         label_map = shape_factory.map_from_name(stock, FEAT_NAMES.index('stock'))
 
         for fid in combo:
-            logging.info('')
-            logging.info(FEAT_NAMES[fid])
+#            logging.info('')
+#            logging.info(FEAT_NAMES[fid])
             THE_POINTS = []
             triangulate_shape(stock)
             if fid == FEAT_NAMES.index('chamfer'):
@@ -716,9 +716,9 @@ def shape_from_directive(combo):
             break
 
         try_cnt += 1
-        logging.warning(combo, 'tried', try_cnt, 'times')
+#        logging.warning(combo, 'tried', try_cnt, 'times')
         if try_cnt > len(combo):
-            logging.warning('tried too many times, no solution found')
+#            logging.warning('tried too many times, no solution found')
             stock = None
             label_map = None
             break
