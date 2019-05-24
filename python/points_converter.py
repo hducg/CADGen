@@ -23,12 +23,20 @@ def generate_points(arg):
     shape_name = shape_path.split(os.sep)[-1].split('.')[0]
     shape_path = shape_path[:-len(shape_name)-5]
     
-    logging.info(shape_name)
+#    logging.info(shape_name)
+    if os.path.exists(os.path.join(points_path, shape_name + '.pts')):
+        return
+    
     a_shape = shape.LabeledShape()
     a_shape.load(shape_path, shape_name)
     
     a_points = points.LabeledPoints()
-    a_points.convert(a_shape)
+    try:
+        a_points.convert(a_shape)
+    except:       
+        logging.exception(shape_name)
+        return
+    
     a_points.save(points_path, shape_name)        
         
         
