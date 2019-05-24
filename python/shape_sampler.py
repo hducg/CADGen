@@ -41,5 +41,5 @@ if __name__ == '__main__':
     for num_combo in range(2, 7):
         combos += list(combinations_with_replacement(range(24), num_combo))
     print(len(combos), 'models')
-    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[1024:1536]])
+    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[1536:2048]])
 
