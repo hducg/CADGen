@@ -229,7 +229,7 @@ def bound_inner(shape, label_map):
         edges = occ_utils.list_edge(face)
         for apnt in sample_pnts:
             THE_POINTS.append(apnt)
-            dist, pnt = occ_utils.dist_point_to_edges(apnt, edges)            
+            dist, pnt = occ_utils.dist_point_to_edges(apnt, edges)
             if dist >= LEN_MIN / 2 + CLEARANCE:
                 dir_w = apnt - np.array(pnt)
                 dir_w = dir_w / np.linalg.norm(dir_w)
@@ -539,7 +539,7 @@ SKETCH_GENERATOR = {'Oring': sketch.face_oring, 'through_hole': sketch.face_circ
                  'triangular_blind_step': sketch.face_triangle_2, 'circular_blind_step': sketch.face_circle_2,
                  'rectangular_blind_step': sketch.face_rect, 'rectangular_through_step': sketch.face_rect,
                  '2sides_through_step': sketch.face_pentagon, 'slanted_through_step': sketch.face_quad,
-                 'v_circular_end_blind_slot': sketch.face_open_circular_end_rect_v, 
+                 'v_circular_end_blind_slot': sketch.face_open_circular_end_rect_v,
                  'h_circular_end_blind_slot': sketch.face_open_circular_end_rect_h,
                  '6sides_passage': sketch.face_hexagon, '6sides_pocket': sketch.face_hexagon}
 
@@ -617,19 +617,19 @@ def add_chamfer(stock, label_map):
 def add_round(stock, label_map):
     fillet_maker = BRepFilletAPI_MakeFillet(stock)
     edges = occ_utils.list_edge(stock)
-
+    for edge in edges:
+        e_util = OCCUtils.edge.Edge(edge)
+        if e_util.length() < LEN_MIN:
+            edges.remove(edge)
+            
     # to do: select edge
     radius = random.uniform(0.5, 1.0)
 
     try_cnt = 0
     while try_cnt < len(edges):
         edge = random.choice(edges)
-        e_util = OCCUtils.edge.Edge(edge)
-
-        if e_util.length() < LEN_MIN:
-            continue
-        fillet_maker.Add(radius, edge)
         try:
+            fillet_maker.Add(radius, edge)
             shape = fillet_maker.Shape()
         except RuntimeError:
             shape = stock
@@ -639,7 +639,9 @@ def add_round(stock, label_map):
         fmap = shape_factory.map_face_before_and_after_feat(stock, fillet_maker)
         label_map = shape_factory.map_from_shape_and_name(fmap, label_map, shape, FEAT_NAMES.index('round'))
         break
-
+    
+    if try_cnt == len(edges):
+        print('add round failed')
     return shape, label_map
 
 
