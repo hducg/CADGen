@@ -38,8 +38,8 @@ if __name__ == '__main__':
         os.mkdir(shape_dir)
 
     combos = []
-    for num_combo in range(2, 7):
+    for num_combo in range(2, 4):
         combos += list(combinations_with_replacement(range(24), num_combo))
     print(len(combos), 'models')
-    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[1536:2048]])
+    Pool().map(generate_shape, [(shape_dir, combo) for combo in combos[2048:]])
 

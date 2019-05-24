@@ -22,8 +22,9 @@ class LabeledPoints:
         self.face_index = []
     
     def convert(self, a_shape):
-        res = point_cloud.resolution_from_shape(a_shape.shape)
-        print('resolution', res)
+#        res = point_cloud.resolution_from_shape(a_shape.shape)
+#        pricdnt('resolution', res)
+        res = 10.0 / 64
         label_map = {face: a_shape.face_truth[a_shape.face_ids[face]] for face in a_shape.face_ids}
         self.points, _, _, self.labels, self.face_index = point_cloud.point_cloud_from_labeled_shape(a_shape.shape, label_map, a_shape.face_ids, res)
     
