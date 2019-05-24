@@ -11,14 +11,14 @@ import random
 import pickle
 
 
-data_dir = '../../datasets/machining_feature/'
+data_dir = '../../dataset/machining_feature/'
 
 def init(resolution=50,sz=50*8+8,batchSize=16):
 #    globals()['categ']=c
     globals()['resolution']=resolution
     globals()['batchSize']=batchSize
     globals()['spatialSize']=torch.LongTensor([sz]*3)
-    globals()['nClassesTotal']=24
+    globals()['nClassesTotal']=25
     
     pts_path_list = glob.glob(data_dir + 'points/*.pts')
     random.seed()
@@ -46,13 +46,13 @@ def train():
     d=[]
     with open(data_dir + 'train_list', 'rb') as file:
         pts_path_list = pickle.load(file)
-    
+    print(pts_path_list)
     for x in torch.utils.data.DataLoader(
         pts_path_list,
         collate_fn=lambda x: load(x),
-        num_workers=12):
+        num_workers=4):
         d.append(x)
-
+    
     def merge(tbl):
         xl_=[]
         xf_=[]
@@ -76,17 +76,17 @@ def train():
                 'y':           torch.from_numpy(np.hstack(y_)),
                 'xf':          [x[0] for x in tbl],
                 'nPoints':     nPoints_}
-    return torch.utils.data.DataLoader(d,batch_size=batchSize, collate_fn=merge, num_workers=10, shuffle=True)
+    return torch.utils.data.DataLoader(d,batch_size=batchSize, collate_fn=merge, num_workers=4, shuffle=True)
 
 def valid():
     d=[]
-    with open(data_dir + 'train_list', 'rb') as file:
+    with open(data_dir + 'valid_list', 'rb') as file:
         pts_path_list = pickle.load(file)
-    
+    print(pts_path_list)
     for x in torch.utils.data.DataLoader(
         pts_path_list,
         collate_fn=lambda x: load(x),
-        num_workers=12):
+        num_workers=4):
         d.append(x)
 
     def merge(tbl):
@@ -112,4 +112,4 @@ def valid():
                 'y':           torch.from_numpy(np.hstack(y_)),
                 'xf':          [x[0] for x in tbl],
                 'nPoints':     nPoints_}
-    return torch.utils.data.DataLoader(d,batch_size=batchSize, collate_fn=merge, num_workers=10, shuffle=True)
+    return torch.utils.data.DataLoader(d,batch_size=batchSize, collate_fn=merge, num_workers=4, shuffle=True)

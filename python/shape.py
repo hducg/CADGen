@@ -86,7 +86,7 @@ def shape_with_fid_from_step(filename):
 
 class LabeledShape:
     def __init__(self):
-        self.shape = None
+        self.shape_name = ''
 
     def directive(self, combo):
         self.shape, face_label_map = feature.shape_from_directive(combo)
@@ -111,6 +111,7 @@ class LabeledShape:
         filename = os.path.join(shape_path, shape_name + '.face_truth')
         with open(filename, 'rb') as file:
             self.face_truth = pickle.load(file)
+        self.shape_name = shape_name
 
     def save(self, shape_path):
         filename = os.path.join(shape_path, self.shape_name + '.step')
@@ -135,10 +136,11 @@ class LabeledShape:
 
 if __name__ == '__main__':
     occ_display, start_occ_display, add_menu, add_function_to_menu = init_display()
+    rootdir = '../../dataset/machining_feature/'
     the_shape = LabeledShape()
-    shape_path = '../data/'
-#    shape_name = '4-17-18-18-19-23-1'
-#    the_shape.load(shape_path, shape_name)
-    the_shape.directive((0,1))
+    shape_path = rootdir + 'shape/'
+    shape_name = '0-9-23'
+    the_shape.load(shape_path, shape_name)
+#    the_shape.directive((0,1))
     the_shape.display(occ_display)    
     start_occ_display()

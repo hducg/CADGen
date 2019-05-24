@@ -78,16 +78,17 @@ class LabeledPoints:
 
 if __name__ == '__main__':
     occ_display, start_occ_display, add_menu, add_function_to_menu = init_display()
-    the_shape = shape.LabeledShape()
-    shape_path = '../data/'
-    shape_name = '4-17-18-18-19-23-1'
-    the_shape.load(shape_path, shape_name)
+    rootdir = '../../dataset/machining_feature/'
+#    the_shape = shape.LabeledShape()
+#    shape_path = '../data/'
+#    shape_name = '4-17-18-18-19-23-1'
+#    the_shape.load(shape_path, shape_name)
     
     the_pts = LabeledPoints()
-    the_pts.convert(the_shape)
-#    pts_path = '../data/'
-#    pts_name = '1a04e3eab45ca15dd86060f189eb133'
-#    the_pts.load(pts_path, pts_name)
+#    the_pts.convert(the_shape)
+    pts_path = rootdir + 'points/'
+    pts_name = '0-9-23'
+    the_pts.load(pts_path, pts_name)
     the_pts.display(occ_display)
     start_occ_display()
     

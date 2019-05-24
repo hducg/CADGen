@@ -13,7 +13,7 @@ import os, sys
 import math
 import numpy as np
 
-data.init(-1,24,24*8,16)
+data.init(24,24*8,1)
 dimension = 3
 reps = 1 #Conv block repetition factor
 m = 32 #Unet number of features

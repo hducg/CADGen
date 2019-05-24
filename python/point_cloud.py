@@ -197,7 +197,7 @@ def resolution_from_shape(shape):
         resolution:     float
     '''
     xmin, ymin, zmin, xmax, ymax, zmax, xlen, ylen, zlen = occ_utils.get_boundingbox(shape, use_mesh = False)
-    resolution = max(xlen, ylen, zlen) / 128
+    resolution = max(xlen, ylen, zlen) / 64
 
     return resolution
 

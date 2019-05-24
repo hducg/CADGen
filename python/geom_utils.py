@@ -7,9 +7,6 @@ Created on Fri Mar 22 15:03:49 2019
 import math
 import numpy as np
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-
 def ray_triangle_intersect(ray_tri):
     '''
     input:

@@ -19,8 +19,8 @@ def generate_points(arg):
     points_path = arg[0]
     shape_path = arg[1]
     shape_name = shape_path.split('/')[-1].split('.')[0]
-    shape_path = shape_path.split('/')[0]
-
+    shape_path = shape_path[:-len(shape_name)-5]
+    
     a_shape = shape.LabeledShape()
     a_shape.load(shape_path, shape_name)
     
@@ -30,22 +30,14 @@ def generate_points(arg):
         
         
 if __name__ == '__main__':
-    PARSER = argparse.ArgumentParser()
-    PARSER.add_argument('--rootdir',
-                        '-r',
-                        type=str,
-                        help='root dir containning the shape dir, points dir, \
-                        octree dir, lmdb dir, feature dir, and list dir',
-                        required=True)
-    ARGS = PARSER.parse_args()
+    rootdir = '../../dataset/machining_feature/'
+    shape_dir = rootdir + 'shape/'
+    points_dir = rootdir + 'points/'
 
-    shape_dir = os.path.join(ARGS.rootdir, '/shape/')
-    points_dir = os.path.join(ARGS.rootdir, '/points/')
-    
     if not os.path.exists(points_dir):
         os.mkdir(points_dir)
         
     shape_paths = glob.glob(shape_dir + '*.step')
-    
+    print(shape_paths)
     Pool().map(generate_points, [(points_dir, shape_path) for shape_path in shape_paths])
     
