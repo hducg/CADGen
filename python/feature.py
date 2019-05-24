@@ -683,9 +683,9 @@ def add_sketch(stock, label_map, feat_type):
         if try_cnt == len(bounds):
             bw = np.linalg.norm(bound[2] - bound[1])
             bh = np.linalg.norm(bound[0] - bound[1])
-#            logging.warning('feature bound failed', bw, bh)
+            print('feature bound failed', bw, bh)
         else:
-#            logging.warning('failed create sketch')
+            print('failed create sketch')
         return stock, label_map
 
 #    logging.info('4. apply feature', depth)
