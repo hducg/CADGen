@@ -13,7 +13,10 @@ import os, sys
 import math
 import numpy as np
 
-data.init(24,24*8,1)
+import logging
+logging.basicConfig(level=logging.INFO, filename='unet.log', filemode='w')
+
+data.init(24,24*8,16)
 dimension = 3
 reps = 1 #Conv block repetition factor
 m = 32 #Unet number of features
@@ -35,13 +38,13 @@ class Model(nn.Module):
         return x
 
 model=Model()
-print(model)
+#print(model)
 trainIterator=data.train()
 validIterator=data.valid()
 
 criterion = nn.CrossEntropyLoss()
 p={}
-p['n_epochs'] = 100
+p['n_epochs'] = 10
 p['initial_lr'] = 1e-1
 p['lr_decay'] = 4e-2
 p['weight_decay'] = 1e-4
@@ -66,8 +69,8 @@ if p['check_point'] and os.path.isfile('epoch.pth'):
     model.load_state_dict(torch.load('model.pth'))
 else:
     p['epoch']=1
-print(p)
-print('#parameters', sum([x.nelement() for x in model.parameters()]))
+#print(p)
+#print('#parameters', sum([x.nelement() for x in model.parameters()]))
 
 
 def store(stats,batch,predictions,loss):
@@ -110,6 +113,11 @@ def iou(stats):
     iou_all = np.mean(iou_per_part)
     return {'nmodels_sum': nmodels, 'iou': iou_all}
 
+train_loss = []
+valid_loss = []
+train_iou = []
+valid_iou = []
+
 for epoch in range(p['epoch'], p['n_epochs'] + 1):
     model.train()
     stats = {}
@@ -122,34 +130,39 @@ for epoch in range(p['epoch'], p['n_epochs'] + 1):
     for batch in trainIterator:
         optimizer.zero_grad()
         batch['x'][1]=batch['x'][1].type(dtype)
-        batch['y']=batch['y'].type(dtypei)
-        batch['mask']=batch['mask'].type(dtype)
+        batch['y']=batch['y'].type(dtypei)        
         predictions=model(batch['x'])
         loss = criterion.forward(predictions,batch['y'])
+        train_loss.append(loss)
         store(stats,batch,predictions,loss)
         loss.backward()
         optimizer.step()
     r = iou(stats)
+    train_iou.append(r)
     print('train epoch',epoch,1,'iou=', r['iou'], 'MegaMulAdd=',scn.forward_pass_multiplyAdd_count/r['nmodels_sum']/1e6, 'MegaHidden',scn.forward_pass_hidden_states/r['nmodels_sum']/1e6,'time=',time.time() - start,'s')
 
     if p['check_point']:
         torch.save(epoch, 'epoch.pth')
         torch.save(model.state_dict(),'model.pth')
 
-    if epoch in [10,30,100]:
-        model.eval()
-        stats = {}
-        scn.forward_pass_multiplyAdd_count=0
-        scn.forward_pass_hidden_states=0
-        start = time.time()
-        for rep in range(1,1+3):
-            for batch in validIterator:
-                batch['x'][1]=batch['x'][1].type(dtype)
-                batch['y']=batch['y'].type(dtypei)
-                batch['mask']=batch['mask'].type(dtype)
-                predictions=model(batch['x'])
-                loss = criterion.forward(predictions,batch['y'])
-                store(stats,batch,predictions,loss)
-            r = iou(stats)
-            print('valid epoch',epoch,rep,'iou=', r['iou'], 'MegaMulAdd=',scn.forward_pass_multiplyAdd_count/r['nmodels_sum']/1e6, 'MegaHidden',scn.forward_pass_hidden_states/r['nmodels_sum']/1e6,'time=',time.time() - start,'s')
-        print(r['iou'])
+    model.eval()
+    stats = {}
+    scn.forward_pass_multiplyAdd_count=0
+    scn.forward_pass_hidden_states=0
+    start = time.time()
+    for batch in validIterator:
+        batch['x'][1]=batch['x'][1].type(dtype)
+        batch['y']=batch['y'].type(dtypei)                
+        predictions=model(batch['x'])
+        loss = criterion.forward(predictions,batch['y'])
+        valid_loss.append(loss)
+        store(stats,batch,predictions,loss)
+    r = iou(stats)
+    valid_iou.append(r)
+    print('valid epoch',epoch,'iou=', r['iou'], 'MegaMulAdd=',scn.forward_pass_multiplyAdd_count/r['nmodels_sum']/1e6, 'MegaHidden',scn.forward_pass_hidden_states/r['nmodels_sum']/1e6,'time=',time.time() - start,'s')
+#    print(r['iou'])
+        
+np.save('train_loss', np.array(train_loss))
+np.save('valid_loss', np.array(valid_loss))
+np.save('train_iou', np.array(train_iou))
+np.save('valid_iou', np.array(valid_iou))

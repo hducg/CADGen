@@ -9,7 +9,8 @@ import torch, torch.utils.data
 import glob
 import random
 import pickle
-
+import os
+import logging
 
 data_dir = '../../dataset/machining_feature/'
 
@@ -20,12 +21,23 @@ def init(resolution=50,sz=50*8+8,batchSize=16):
     globals()['spatialSize']=torch.LongTensor([sz]*3)
     globals()['nClassesTotal']=25
     
+    logging.info('resolution: ' + str(resolution))
+    logging.info('batchSize: ' + str(batchSize))
+    logging.info('spatialSize: ' + str([sz]*3))
+    logging.info('nClassesTotal: 25' )
+    
+    if os.path.exists(data_dir + 'train_list'):
+        return
+
     pts_path_list = glob.glob(data_dir + 'points/*.pts')
     random.seed()
     random.shuffle(pts_path_list)
-    
+
     num_train = int(len(pts_path_list) * 0.4)
-    print(num_train, 'training samples')    
+    logging.info(str(num_train) + ' training samples')
+    logging.info(str(num_train) + ' validation samples')
+    logging.info(str(len(pts_path_list) - 2 * num_train) + ' testing samples')
+    
     with open(data_dir + 'train_list', 'wb') as file:
         pickle.dump(pts_path_list[: num_train], file)
 
@@ -34,8 +46,8 @@ def init(resolution=50,sz=50*8+8,batchSize=16):
 
     with open(data_dir + 'test_list', 'wb') as file:
         pickle.dump(pts_path_list[2 * num_train :], file)
-    
-    
+
+
 def load(xF):
     xl=np.loadtxt(xF[0])
     xl/= ((xl**2).sum(1).max()**0.5)
@@ -46,13 +58,13 @@ def train():
     d=[]
     with open(data_dir + 'train_list', 'rb') as file:
         pts_path_list = pickle.load(file)
-    print(pts_path_list)
+#    print(pts_path_list)
     for x in torch.utils.data.DataLoader(
         pts_path_list,
         collate_fn=lambda x: load(x),
         num_workers=4):
         d.append(x)
-    
+
     def merge(tbl):
         xl_=[]
         xf_=[]
@@ -82,7 +94,7 @@ def valid():
     d=[]
     with open(data_dir + 'valid_list', 'rb') as file:
         pts_path_list = pickle.load(file)
-    print(pts_path_list)
+#    print(pts_path_list)
     for x in torch.utils.data.DataLoader(
         pts_path_list,
         collate_fn=lambda x: load(x),
