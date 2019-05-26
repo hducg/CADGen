@@ -70,7 +70,7 @@ if p['check_point'] and os.path.isfile('epoch.pth'):
 else:
     p['epoch']=1
 #print(p)
-#print('#parameters', sum([x.nelement() for x in model.parameters()]))
+print('#parameters', sum([x.nelement() for x in model.parameters()]))
 
 
 def store(stats,batch,predictions,loss):

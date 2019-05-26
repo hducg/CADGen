@@ -24,7 +24,7 @@ class LabeledPoints:
     def convert(self, a_shape):
 #        res = point_cloud.resolution_from_shape(a_shape.shape)
 #        pricdnt('resolution', res)
-        res = 10.0 / 64
+        res = 10.0 / 32
         label_map = {face: a_shape.face_truth[a_shape.face_ids[face]] for face in a_shape.face_ids}
         self.points, _, _, self.labels, self.face_index = point_cloud.point_cloud_from_labeled_shape(a_shape.shape, label_map, a_shape.face_ids, res)
     
@@ -80,16 +80,16 @@ class LabeledPoints:
 if __name__ == '__main__':
     occ_display, start_occ_display, add_menu, add_function_to_menu = init_display()
     rootdir = '../../dataset/machining_feature/'
-#    the_shape = shape.LabeledShape()
-#    shape_path = '../data/'
-#    shape_name = '4-17-18-18-19-23-1'
-#    the_shape.load(shape_path, shape_name)
+    the_shape = shape.LabeledShape()
+    shape_path = rootdir + 'shape'
+    shape_name = '7-10-23-24'
+    the_shape.load(shape_path, shape_name)
     
     the_pts = LabeledPoints()
-#    the_pts.convert(the_shape)
-    pts_path = rootdir + 'points/'
-    pts_name = '7-10-23-24'
-    the_pts.load(pts_path, pts_name)
+    the_pts.convert(the_shape)
+#    pts_path = rootdir + 'points/'
+#    pts_name = '7-10-23-24'
+#    the_pts.load(pts_path, pts_name)
     the_pts.display(occ_display)
     start_occ_display()
     
